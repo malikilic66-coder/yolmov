@@ -218,6 +218,7 @@ const PartnerDashboard: React.FC<PartnerDashboardProps> = ({ onLogout }) => {
   const [selectedReviewForObjection, setSelectedReviewForObjection] = useState<typeof MOCK_REVIEWS[0] | null>(null);
   const [objectionReason, setObjectionReason] = useState('');
   const [objectionDetails, setObjectionDetails] = useState('');
+  const [ratingFilter, setRatingFilter] = useState<number | null>(null); // Yıldız filtresi için
 
   // Filter State
   const [filterMode, setFilterMode] = useState<'all' | 'nearest' | 'highest_price' | 'urgent'>('all');
@@ -269,6 +270,8 @@ const PartnerDashboard: React.FC<PartnerDashboardProps> = ({ onLogout }) => {
   // Fleet State - Yeni Araç Ekleme
   const [showNewVehiclePage, setShowNewVehiclePage] = useState(false);
   const [vehiclePlate, setVehiclePlate] = useState('');
+  const [selectedVehicleForSettings, setSelectedVehicleForSettings] = useState<typeof MOCK_FLEET[0] | null>(null);
+  const [selectedVehicleForHistory, setSelectedVehicleForHistory] = useState<typeof MOCK_FLEET[0] | null>(null);
 
   // Document Upload Handler
   const handleDocumentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -2061,7 +2064,7 @@ const PartnerDashboard: React.FC<PartnerDashboardProps> = ({ onLogout }) => {
                          <h3 className="font-bold text-slate-900 text-lg">{vehicle.plate}</h3>
                          <p className="text-sm text-slate-500">{vehicle.model}</p>
                       </div>
-                      <button onClick={() => alert(`${vehicle.plate} için ayarlar açılıyor.`)} className="p-2 text-slate-400 hover:text-blue-600 bg-slate-50 hover:bg-blue-50 rounded-lg transition-colors"><Settings size={16} /></button>
+                      <button onClick={() => setSelectedVehicleForSettings(vehicle)} className="p-2 text-slate-400 hover:text-blue-600 bg-slate-50 hover:bg-blue-50 rounded-lg transition-colors"><Settings size={16} /></button>
                    </div>
                    <div className="space-y-2 text-sm">
                       <div className="flex justify-between py-2 border-b border-slate-50">
@@ -2074,7 +2077,7 @@ const PartnerDashboard: React.FC<PartnerDashboardProps> = ({ onLogout }) => {
                       </div>
                    </div>
                    <div className="mt-4 pt-2 flex gap-2">
-                      <button onClick={() => alert(`${vehicle.plate} için geçmiş görüntüleniyor.`)} className="flex-1 py-2 rounded-lg border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-50 transition-colors">Geçmiş</button>
+                      <button onClick={() => setSelectedVehicleForHistory(vehicle)} className="flex-1 py-2 rounded-lg border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-50 transition-colors">Geçmiş</button>
                    </div>
                 </div>
              </div>
@@ -2088,6 +2091,128 @@ const PartnerDashboard: React.FC<PartnerDashboardProps> = ({ onLogout }) => {
              <span className="font-bold">Yeni Araç Tanımla</span>
           </button>
        </div>
+
+       {/* Vehicle Settings Modal */}
+       {selectedVehicleForSettings && (
+         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setSelectedVehicleForSettings(null)}>
+           <div className="bg-white rounded-3xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+             <div className="flex items-center justify-between mb-6">
+               <div>
+                 <h2 className="text-2xl font-bold text-gray-900">Araç Ayarları</h2>
+                 <p className="text-sm text-gray-500 mt-1">{selectedVehicleForSettings.plate} - {selectedVehicleForSettings.model}</p>
+               </div>
+               <button onClick={() => setSelectedVehicleForSettings(null)} className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200">
+                 <X size={20} />
+               </button>
+             </div>
+
+             <div className="space-y-6">
+               <div className="bg-gray-50 rounded-xl p-5">
+                 <label className="block text-sm font-bold text-gray-700 mb-2">Araç Durumu</label>
+                 <select className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                   <option>{selectedVehicleForSettings.status === 'active' ? 'Aktif' : 'Bakımda'}</option>
+                   <option>Aktif</option>
+                   <option>Bakımda</option>
+                   <option>Devre Dışı</option>
+                 </select>
+               </div>
+
+               <div className="bg-gray-50 rounded-xl p-5">
+                 <label className="block text-sm font-bold text-gray-700 mb-2">Sürücü</label>
+                 <input 
+                   type="text" 
+                   defaultValue={selectedVehicleForSettings.driver}
+                   className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                 />
+               </div>
+
+               <div className="bg-gray-50 rounded-xl p-5">
+                 <label className="block text-sm font-bold text-gray-700 mb-2">Araç Tipi</label>
+                 <input 
+                   type="text" 
+                   defaultValue={selectedVehicleForSettings.type}
+                   className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                 />
+               </div>
+
+               <div className="flex gap-3 pt-4">
+                 <button
+                   onClick={() => setSelectedVehicleForSettings(null)}
+                   className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-all"
+                 >
+                   İptal
+                 </button>
+                 <button
+                   onClick={() => {
+                     alert('Ayarlar kaydedildi!');
+                     setSelectedVehicleForSettings(null);
+                   }}
+                   className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all"
+                 >
+                   Kaydet
+                 </button>
+               </div>
+             </div>
+           </div>
+         </div>
+       )}
+
+       {/* Vehicle History Modal */}
+       {selectedVehicleForHistory && (
+         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setSelectedVehicleForHistory(null)}>
+           <div className="bg-white rounded-3xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+             <div className="flex items-center justify-between mb-6">
+               <div>
+                 <h2 className="text-2xl font-bold text-gray-900">Araç Geçmişi</h2>
+                 <p className="text-sm text-gray-500 mt-1">{selectedVehicleForHistory.plate} - Tamamlanan İşler</p>
+               </div>
+               <button onClick={() => setSelectedVehicleForHistory(null)} className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200">
+                 <X size={20} />
+               </button>
+             </div>
+
+             <div className="space-y-3">
+               {MOCK_HISTORY.slice(0, 5).map((job, idx) => (
+                 <div key={idx} className="bg-gray-50 rounded-xl p-5 border border-gray-200 hover:border-blue-300 transition-all">
+                   <div className="flex items-start justify-between mb-3">
+                     <div>
+                       <h3 className="font-bold text-gray-900">#{job.id}</h3>
+                       <p className="text-sm text-gray-500">{job.date}</p>
+                     </div>
+                     <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full">
+                       Tamamlandı
+                     </span>
+                   </div>
+                   <div className="grid grid-cols-2 gap-4 text-sm">
+                     <div>
+                       <p className="text-gray-500">Hizmet</p>
+                       <p className="font-bold text-gray-900">{job.service}</p>
+                     </div>
+                     <div>
+                       <p className="text-gray-500">Müşteri</p>
+                       <p className="font-bold text-gray-900">{job.customer}</p>
+                     </div>
+                     <div>
+                       <p className="text-gray-500">Rota</p>
+                       <p className="font-bold text-gray-900">{job.route}</p>
+                     </div>
+                     <div>
+                       <p className="text-gray-500">Kazanç</p>
+                       <p className="font-bold text-green-600">₺{job.earnings}</p>
+                     </div>
+                   </div>
+                 </div>
+               ))}
+             </div>
+
+             <div className="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-200">
+               <p className="text-sm text-blue-700">
+                 <strong>Toplam {MOCK_HISTORY.length} iş</strong> bu araçla tamamlandı. Detaylı rapor için "Geçmiş İşler" sekmesini kullanabilirsiniz.
+               </p>
+             </div>
+           </div>
+         </div>
+       )}
     </div>
     );
   };
@@ -2498,6 +2623,14 @@ const PartnerDashboard: React.FC<PartnerDashboardProps> = ({ onLogout }) => {
     // Ana değerlendirmeler sayfası
     const avgRating = MOCK_REVIEWS.reduce((sum, r) => sum + r.rating, 0) / MOCK_REVIEWS.length;
     
+    // Filtrelenmiş reviews
+    const filteredReviews = ratingFilter 
+      ? MOCK_REVIEWS.filter(r => {
+          if (ratingFilter === 2) return r.rating <= 2;
+          return r.rating === ratingFilter;
+        })
+      : MOCK_REVIEWS;
+    
     return (
       <div className="p-4 md:p-6 space-y-6">
         {/* Header */}
@@ -2515,41 +2648,73 @@ const PartnerDashboard: React.FC<PartnerDashboardProps> = ({ onLogout }) => {
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-white rounded-xl border border-slate-200 p-4">
+        {/* Stats - Tıklanabilir Filtreler */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <button
+            onClick={() => setRatingFilter(null)}
+            className={`bg-white rounded-xl border-2 p-4 text-left transition-all hover:shadow-md ${
+              ratingFilter === null ? 'border-slate-400 shadow-md' : 'border-slate-200'
+            }`}
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <Star size={16} fill="#64748b" className="text-slate-500" />
+              <span className="text-xs font-bold text-slate-500">Tümü</span>
+            </div>
+            <p className="text-2xl font-bold text-slate-900">{MOCK_REVIEWS.length}</p>
+          </button>
+          <button
+            onClick={() => setRatingFilter(5)}
+            className={`bg-white rounded-xl border-2 p-4 text-left transition-all hover:shadow-md ${
+              ratingFilter === 5 ? 'border-green-400 shadow-md' : 'border-slate-200'
+            }`}
+          >
             <div className="flex items-center gap-2 mb-2">
               <Star size={16} fill="#22c55e" className="text-green-500" />
               <span className="text-xs font-bold text-slate-500">5 Yıldız</span>
             </div>
             <p className="text-2xl font-bold text-slate-900">{MOCK_REVIEWS.filter(r => r.rating === 5).length}</p>
-          </div>
-          <div className="bg-white rounded-xl border border-slate-200 p-4">
+          </button>
+          <button
+            onClick={() => setRatingFilter(4)}
+            className={`bg-white rounded-xl border-2 p-4 text-left transition-all hover:shadow-md ${
+              ratingFilter === 4 ? 'border-blue-400 shadow-md' : 'border-slate-200'
+            }`}
+          >
             <div className="flex items-center gap-2 mb-2">
               <Star size={16} fill="#3b82f6" className="text-blue-500" />
               <span className="text-xs font-bold text-slate-500">4 Yıldız</span>
             </div>
             <p className="text-2xl font-bold text-slate-900">{MOCK_REVIEWS.filter(r => r.rating === 4).length}</p>
-          </div>
-          <div className="bg-white rounded-xl border border-slate-200 p-4">
+          </button>
+          <button
+            onClick={() => setRatingFilter(3)}
+            className={`bg-white rounded-xl border-2 p-4 text-left transition-all hover:shadow-md ${
+              ratingFilter === 3 ? 'border-amber-400 shadow-md' : 'border-slate-200'
+            }`}
+          >
             <div className="flex items-center gap-2 mb-2">
               <Star size={16} fill="#f59e0b" className="text-amber-500" />
               <span className="text-xs font-bold text-slate-500">3 Yıldız</span>
             </div>
             <p className="text-2xl font-bold text-slate-900">{MOCK_REVIEWS.filter(r => r.rating === 3).length}</p>
-          </div>
-          <div className="bg-white rounded-xl border border-slate-200 p-4">
+          </button>
+          <button
+            onClick={() => setRatingFilter(2)}
+            className={`bg-white rounded-xl border-2 p-4 text-left transition-all hover:shadow-md ${
+              ratingFilter === 2 ? 'border-red-400 shadow-md' : 'border-slate-200'
+            }`}
+          >
             <div className="flex items-center gap-2 mb-2">
               <Star size={16} fill="#ef4444" className="text-red-500" />
               <span className="text-xs font-bold text-slate-500">≤2 Yıldız</span>
             </div>
             <p className="text-2xl font-bold text-slate-900">{MOCK_REVIEWS.filter(r => r.rating <= 2).length}</p>
-          </div>
+          </button>
         </div>
 
         {/* Reviews List */}
         <div className="space-y-4">
-          {MOCK_REVIEWS.map(review => {
+          {filteredReviews.map(review => {
             const isLowRating = review.rating < 3;
             const displayName = isLowRating ? 'Müşteri ***' : review.customerName;
             const displayPhone = isLowRating ? '**********' : review.customerPhone;

@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { CheckCircle, XCircle, Clock, Search, Filter, Calendar, DollarSign, Eye, ChevronRight, User, MapPin, FileText } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, Search, Filter, Calendar, DollarSign, Eye, ChevronRight, User, MapPin, FileText, X } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface Offer {
@@ -309,8 +309,8 @@ export const PartnerOfferHistory: React.FC = () => {
 
       {/* Detail Modal */}
       {selectedOffer && (
-        <div className="fixed inset-0 bg-slate-50 flex items-center justify-center z-[100]" onClick={() => setSelectedOffer(null)}>
-          <div className="bg-white rounded-2xl p-6 w-full h-full overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center z-[100] p-4" onClick={() => setSelectedOffer(null)}>
+          <div className="bg-white rounded-3xl p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-gray-900">Teklif Detayları</h2>
               <button onClick={() => setSelectedOffer(null)} className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200">

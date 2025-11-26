@@ -96,6 +96,11 @@ export const PartnerPayments: React.FC = () => {
   const [filterType, setFilterType] = useState<'all' | 'earning' | 'commission' | 'fee'>('all');
   const [filterStatus, setFilterStatus] = useState<'all' | 'completed' | 'pending' | 'failed'>('all');
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [pageSize, setPageSize] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [showExportModal, setShowExportModal] = useState(false);
 
   const filteredPayments = MOCK_PAYMENTS.filter(payment => {
     const matchesType = filterType === 'all' || payment.type === filterType;
@@ -230,7 +235,7 @@ export const PartnerPayments: React.FC = () => {
           </div>
 
           <button
-            onClick={() => alert('Rapor indirme işlemi başlatıldı.')}
+            onClick={() => setShowExportModal(true)}
             className="ml-auto px-6 py-2.5 bg-orange-600 text-white rounded-lg font-semibold hover:bg-orange-700 transition-colors flex items-center gap-2"
           >
             <Download size={18} />
@@ -308,6 +313,128 @@ export const PartnerPayments: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Export Modal */}
+      {showExportModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowExportModal(false)}>
+          <div className="bg-white rounded-3xl p-6 max-w-2xl w-full" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">Rapor İndir</h2>
+                <p className="text-sm text-gray-500 mt-1">Ödeme raporunuzu özelleştirin ve indirin</p>
+              </div>
+              <button onClick={() => setShowExportModal(false)} className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200">
+                <XCircle size={20} />
+              </button>
+            </div>
+
+            <div className="space-y-6">
+              {/* Tarih Aralığı */}
+              <div className="space-y-3">
+                <label className="block text-sm font-bold text-gray-700">Tarih Aralığı</label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-2">Başlangıç</label>
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-2">Bitiş</label>
+                    <input
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => {setStartDate(''); setEndDate('');}} className="text-xs px-3 py-1 bg-gray-100 text-gray-600 rounded-md hover:bg-gray-200">Tümü</button>
+                  <button onClick={() => {
+                    const today = new Date();
+                    const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate());
+                    setStartDate(lastMonth.toISOString().split('T')[0]);
+                    setEndDate(today.toISOString().split('T')[0]);
+                  }} className="text-xs px-3 py-1 bg-gray-100 text-gray-600 rounded-md hover:bg-gray-200">Son 30 Gün</button>
+                  <button onClick={() => {
+                    const today = new Date();
+                    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+                    setStartDate(firstDay.toISOString().split('T')[0]);
+                    setEndDate(today.toISOString().split('T')[0]);
+                  }} className="text-xs px-3 py-1 bg-gray-100 text-gray-600 rounded-md hover:bg-gray-200">Bu Ay</button>
+                </div>
+              </div>
+
+              {/* Kayıt Sayısı */}
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-3">Sayfa Başına Kayıt</label>
+                <div className="flex gap-3">
+                  {[10, 20, 50, 100].map(size => (
+                    <button
+                      key={size}
+                      onClick={() => setPageSize(size)}
+                      className={`flex-1 py-2.5 rounded-lg font-bold transition-all ${
+                        pageSize === size
+                          ? 'bg-orange-600 text-white'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      {size}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Format Seçimi */}
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-3">Dosya Formatı</label>
+                <div className="grid grid-cols-3 gap-3">
+                  <button 
+                    onClick={() => {
+                      alert(`Excel formatında rapor indiriliyor... (${filteredPayments.length} kayıt)`);
+                      setShowExportModal(false);
+                    }}
+                    className="py-3 px-4 bg-green-50 border-2 border-green-200 text-green-700 rounded-lg font-bold hover:bg-green-100 transition-all flex items-center justify-center gap-2"
+                  >
+                    <Download size={18} />
+                    Excel
+                  </button>
+                  <button 
+                    onClick={() => {
+                      alert(`PDF formatında rapor indiriliyor... (${filteredPayments.length} kayıt)`);
+                      setShowExportModal(false);
+                    }}
+                    className="py-3 px-4 bg-red-50 border-2 border-red-200 text-red-700 rounded-lg font-bold hover:bg-red-100 transition-all flex items-center justify-center gap-2"
+                  >
+                    <Download size={18} />
+                    PDF
+                  </button>
+                  <button 
+                    onClick={() => {
+                      alert(`CSV formatında rapor indiriliyor... (${filteredPayments.length} kayıt)`);
+                      setShowExportModal(false);
+                    }}
+                    className="py-3 px-4 bg-blue-50 border-2 border-blue-200 text-blue-700 rounded-lg font-bold hover:bg-blue-100 transition-all flex items-center justify-center gap-2"
+                  >
+                    <Download size={18} />
+                    CSV
+                  </button>
+                </div>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-sm text-blue-700">
+                  <strong>{filteredPayments.length} kayıt</strong> indirilecek. Tarih aralığı ve filtreler uygulanacaktır.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Payment Detail Modal */}
       {selectedPayment && (

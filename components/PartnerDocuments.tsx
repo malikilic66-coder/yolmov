@@ -39,6 +39,7 @@ export const PartnerDocuments: React.FC = () => {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [viewingDocument, setViewingDocument] = useState<Document | null>(null);
 
   const getStatusBadge = (status: Document['status']) => {
     const config = {
@@ -235,7 +236,7 @@ export const PartnerDocuments: React.FC = () => {
                 <div className="flex flex-col items-end gap-2">
                   {getStatusBadge(doc.status)}
                   <div className="flex gap-2">
-                    <button onClick={() => alert(`'${doc.name}' görüntüleniyor.`)} className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center hover:bg-gray-200">
+                    <button onClick={() => setViewingDocument(doc)} className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center hover:bg-gray-200">
                       <Eye size={16} className="text-gray-600" />
                     </button>
                     <button onClick={() => alert(`'${doc.name}' indiriliyor.`)} className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center hover:bg-gray-200">
@@ -277,6 +278,115 @@ export const PartnerDocuments: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Document Viewing Modal */}
+      {viewingDocument && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setViewingDocument(null)}>
+          <div className="bg-white rounded-3xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">Belge Detayları</h2>
+                <p className="text-sm text-gray-500 mt-1">{DOCUMENT_TYPES.find(t => t.value === viewingDocument.type)?.label}</p>
+              </div>
+              <button onClick={() => setViewingDocument(null)} className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200">
+                <XCircle size={20} />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Belge Bilgileri */}
+              <div className="space-y-4">
+                <div className="bg-gray-50 rounded-xl p-4">
+                  <p className="text-xs font-bold text-gray-500 uppercase mb-2">Belge Türü</p>
+                  <p className="font-bold text-gray-900">{DOCUMENT_TYPES.find(t => t.value === viewingDocument.type)?.label}</p>
+                </div>
+
+                <div className="bg-gray-50 rounded-xl p-4">
+                  <p className="text-xs font-bold text-gray-500 uppercase mb-2">Dosya Adı</p>
+                  <p className="font-mono text-sm text-gray-900">{viewingDocument.name}</p>
+                </div>
+
+                <div className="bg-gray-50 rounded-xl p-4">
+                  <p className="text-xs font-bold text-gray-500 uppercase mb-2">Dosya Boyutu</p>
+                  <p className="font-bold text-gray-900">{viewingDocument.fileSize}</p>
+                </div>
+
+                <div className="bg-gray-50 rounded-xl p-4">
+                  <p className="text-xs font-bold text-gray-500 uppercase mb-2">Yüklenme Tarihi</p>
+                  <p className="font-bold text-gray-900">{viewingDocument.uploadDate}</p>
+                </div>
+
+                {viewingDocument.expiryDate && (
+                  <div className="bg-orange-50 rounded-xl p-4 border border-orange-200">
+                    <p className="text-xs font-bold text-orange-600 uppercase mb-2">Son Geçerlilik</p>
+                    <p className="font-bold text-orange-900">{viewingDocument.expiryDate}</p>
+                  </div>
+                )}
+
+                <div className="bg-gray-50 rounded-xl p-4">
+                  <p className="text-xs font-bold text-gray-500 uppercase mb-2">Durum</p>
+                  {getStatusBadge(viewingDocument.status)}
+                </div>
+
+                {viewingDocument.status === 'rejected' && viewingDocument.rejectionReason && (
+                  <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4">
+                    <p className="text-xs font-bold text-red-600 uppercase mb-2">Red Nedeni</p>
+                    <p className="text-sm text-red-800">{viewingDocument.rejectionReason}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Belge Görseli / Önizleme */}
+              <div className="space-y-4">
+                <div className="bg-gray-100 rounded-2xl p-8 h-96 flex items-center justify-center border-2 border-dashed border-gray-300">
+                  {viewingDocument.name.toLowerCase().endsWith('.pdf') ? (
+                    <div className="text-center">
+                      <FileText size={64} className="text-gray-400 mx-auto mb-4" />
+                      <p className="text-gray-600 font-medium">PDF Belgesi</p>
+                      <p className="text-xs text-gray-400 mt-2">Tam görünüm için indirin</p>
+                    </div>
+                  ) : (
+                    <div className="text-center">
+                      <Eye size={64} className="text-gray-400 mx-auto mb-4" />
+                      <p className="text-gray-600 font-medium">Görsel Önizleme</p>
+                      <p className="text-xs text-gray-400 mt-2">{viewingDocument.name}</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex gap-3">
+                  <button 
+                    onClick={() => alert(`${viewingDocument.name} indiriliyor...`)}
+                    className="flex-1 py-3 bg-orange-600 text-white rounded-xl font-bold hover:bg-orange-700 transition-all flex items-center justify-center gap-2"
+                  >
+                    <Download size={18} />
+                    İndir
+                  </button>
+                  <button 
+                    onClick={() => setViewingDocument(null)}
+                    className="px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-all"
+                  >
+                    Kapat
+                  </button>
+                </div>
+
+                {viewingDocument.status === 'rejected' && (
+                  <button 
+                    onClick={() => {
+                      setViewingDocument(null);
+                      setSelectedType(viewingDocument.type);
+                    }}
+                    className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all flex items-center justify-center gap-2"
+                  >
+                    <Upload size={18} />
+                    Yeniden Yükle
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
