@@ -267,107 +267,99 @@ const AdminReviewsTab: React.FC = () => {
         </div>
       </div>
 
-      {/* Reviews List */}
-      <div className="space-y-4">
+      {/* Reviews List - Tablo Formatı */}
+      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
         {filteredByRating.length === 0 ? (
           <EmptyState title="Değerlendirme Bulunamadı" description="Arama kriterinize uygun değerlendirme yok." />
         ) : (
-          filteredByRating.map((review) => (
-            <div key={review.id} className={`bg-white rounded-2xl border-2 p-5 transition-all hover:shadow-md ${review.objection?.status === 'pending' ? 'border-orange-300 bg-orange-50/30' : 'border-slate-200'}`}>
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-start gap-3 flex-1">
-                  <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center">
-                    <User size={20} className="text-slate-400" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <p className="font-bold text-slate-900">{review.partnerName}</p>
-                      <span className="text-xs text-slate-400">•</span>
-                      <p className="text-sm text-slate-500">{review.service}</p>
-                    </div>
-                    <p className="text-xs text-slate-400">Müşteri: {review.customerName} • {review.date}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1">
-                  {[...Array(5)].map((_, i) => (
-                    <Star
-                      key={i}
-                      size={16}
-                      className={i < review.rating ? getRatingColor(review.rating) : 'text-slate-300'}
-                      fill={i < review.rating ? 'currentColor' : 'none'}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              <p className="text-sm text-slate-700 mb-3">{review.comment}</p>
-
-              {review.tags.length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {review.tags.map((tag, idx) => (
-                    <span key={idx} className={`px-2 py-1 rounded-full text-xs font-semibold ${review.rating >= 4 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              {review.objection && (
-                <div className={`mt-4 p-4 rounded-xl border-2 ${
-                  review.objection.status === 'pending' ? 'bg-orange-50 border-orange-200' :
-                  review.objection.status === 'approved' ? 'bg-green-50 border-green-200' :
-                  'bg-red-50 border-red-200'
-                }`}>
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <AlertTriangle size={16} className={
-                        review.objection.status === 'pending' ? 'text-orange-600' :
-                        review.objection.status === 'approved' ? 'text-green-600' :
-                        'text-red-600'
-                      } />
-                      <p className="text-sm font-bold text-slate-900">İtiraz: {review.objection.reason}</p>
-                    </div>
-                    {review.objection.status === 'pending' && (
-                      <span className="px-2 py-1 bg-orange-200 text-orange-700 text-xs font-bold rounded-full">Bekliyor</span>
-                    )}
-                    {review.objection.status === 'approved' && (
-                      <span className="px-2 py-1 bg-green-200 text-green-700 text-xs font-bold rounded-full">Onaylandı</span>
-                    )}
-                    {review.objection.status === 'rejected' && (
-                      <span className="px-2 py-1 bg-red-200 text-red-700 text-xs font-bold rounded-full">Reddedildi</span>
-                    )}
-                  </div>
-                  <p className="text-sm text-slate-600">{review.objection.details}</p>
-                  {review.objection.resolvedBy && (
-                    <p className="text-xs text-slate-400 mt-2">
-                      {review.objection.resolvedBy} • {review.objection.resolvedAt}
-                    </p>
-                  )}
-                </div>
-              )}
-
-              <div className="flex gap-2 mt-4">
-                <button
-                  onClick={() => setSelectedReview(review)}
-                  className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg text-sm font-bold hover:bg-slate-200 flex items-center gap-2"
+          <table className="w-full">
+            <thead className="bg-slate-50 border-b border-slate-200">
+              <tr>
+                <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase">Partner / Müşteri</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase">Hizmet</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase">Puan</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase">Yorum</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase">Tarih</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase">Durum</th>
+                <th className="px-6 py-4 text-right text-xs font-bold text-slate-600 uppercase">İşlem</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {filteredByRating.map((review) => (
+                <tr 
+                  key={review.id} 
+                  className={`hover:bg-slate-50 ${review.objection?.status === 'pending' ? 'bg-orange-50/50' : ''}`}
                 >
-                  <Eye size={16} />
-                  Detay
-                </button>
-                {review.objection?.status === 'pending' && (
-                  <>
-                    <button
-                      onClick={() => handleApproveObjection(review.id)}
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-bold hover:bg-green-700 flex items-center gap-2"
-                    >
-                      <CheckCircle size={16} />
-                      İtirazı Onayla
-                    </button>
-                    <button
-                      onClick={() => handleRejectObjection(review.id)}
-                      className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700 flex items-center gap-2"
-                    >
-                      <XCircle size={16} />
+                  <td className="px-6 py-4">
+                    <div>
+                      <p className="font-bold text-slate-900 text-sm">{review.partnerName}</p>
+                      <p className="text-xs text-slate-500">{review.customerName}</p>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-slate-700">{review.service}</td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-1">
+                      {[...Array(5)].map((_, i) => (
+                        <Star
+                          key={i}
+                          size={14}
+                          className={i < review.rating ? getRatingColor(review.rating) : 'text-slate-300'}
+                          fill={i < review.rating ? 'currentColor' : 'none'}
+                        />
+                      ))}
+                      <span className={`ml-1 text-sm font-bold ${getRatingColor(review.rating)}`}>{review.rating}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <p className="text-sm text-slate-700 line-clamp-2 max-w-xs">{review.comment}</p>
+                  </td>
+                  <td className="px-6 py-4 text-xs text-slate-500 whitespace-nowrap">{review.date}</td>
+                  <td className="px-6 py-4">
+                    {review.objection ? (
+                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                        review.objection.status === 'pending' ? 'bg-orange-100 text-orange-700' :
+                        review.objection.status === 'approved' ? 'bg-green-100 text-green-700' :
+                        'bg-red-100 text-red-700'
+                      }`}>
+                        {review.objection.status === 'pending' ? 'İtiraz Bekliyor' :
+                         review.objection.status === 'approved' ? 'İtiraz Onaylandı' : 'İtiraz Reddedildi'}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-slate-400">-</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => setSelectedReview(review)}
+                        className="p-2 text-slate-400 hover:text-blue-600 bg-slate-50 hover:bg-blue-50 rounded-lg transition-colors"
+                      >
+                        <Eye size={16} />
+                      </button>
+                      {review.objection?.status === 'pending' && (
+                        <>
+                          <button
+                            onClick={() => handleApproveObjection(review.id)}
+                            className="p-2 text-green-600 hover:text-green-700 bg-green-50 hover:bg-green-100 rounded-lg transition-colors"
+                          >
+                            <CheckCircle size={16} />
+                          </button>
+                          <button
+                            onClick={() => handleRejectObjection(review.id)}
+                            className="p-2 text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+                          >
+                            <XCircle size={16} />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
                       İtirazı Reddet
                     </button>
                   </>

@@ -4,6 +4,7 @@
  */
 
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Search, Truck, Eye, Edit, CheckCircle, XCircle, User, Calendar, Wrench, MapPin } from 'lucide-react';
 import { useAdminFilter } from '../hooks/useAdminFilter';
 import StatusBadge from '../ui/StatusBadge';
@@ -120,7 +121,7 @@ const MOCK_VEHICLES: Vehicle[] = [
 ];
 
 const AdminFleetTab: React.FC = () => {
-  const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
+  const navigate = useNavigate();
   const [vehicles, setVehicles] = useState(MOCK_VEHICLES);
 
   const { filtered, searchTerm, setSearchTerm, filterType, setFilterType } = useAdminFilter<Vehicle>(
@@ -139,9 +140,6 @@ const AdminFleetTab: React.FC = () => {
 
   const updateVehicleStatus = (vehicleId: string, newStatus: Vehicle['status']) => {
     setVehicles(prev => prev.map(v => v.id === vehicleId ? { ...v, status: newStatus } : v));
-    if (selectedVehicle?.id === vehicleId) {
-      setSelectedVehicle(prev => prev ? { ...prev, status: newStatus } : null);
-    }
   };
 
   return (
@@ -259,7 +257,7 @@ const AdminFleetTab: React.FC = () => {
                 </div>
 
                 <button
-                  onClick={() => setSelectedVehicle(vehicle)}
+                  onClick={() => navigate(`/admin/filo/${vehicle.id}`)}
                   className="w-full py-2 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 flex items-center justify-center gap-2"
                 >
                   <Eye size={18} />
@@ -271,103 +269,7 @@ const AdminFleetTab: React.FC = () => {
         )}
       </div>
 
-      {/* Vehicle Detail Modal */}
-      {selectedVehicle && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setSelectedVehicle(null)}>
-          <div className="bg-white rounded-3xl p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h2 className="text-2xl font-bold text-slate-900">{selectedVehicle.plate}</h2>
-                <p className="text-sm text-slate-500">{selectedVehicle.model}</p>
-              </div>
-              <button onClick={() => setSelectedVehicle(null)} className="p-2 hover:bg-slate-100 rounded-lg">
-                <XCircle size={24} className="text-slate-400" />
-              </button>
-            </div>
 
-            <div className="mb-6">
-              <img src={selectedVehicle.image} alt={selectedVehicle.model} className="w-full h-64 object-cover rounded-2xl" />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <div className="bg-slate-50 rounded-xl p-4">
-                <p className="text-xs text-slate-500 mb-1">Partner</p>
-                <p className="font-bold text-slate-900">{selectedVehicle.partnerName}</p>
-                <p className="text-xs text-slate-500">{selectedVehicle.partnerId}</p>
-              </div>
-              <div className="bg-slate-50 rounded-xl p-4">
-                <p className="text-xs text-slate-500 mb-1">Araç Tipi</p>
-                <p className="font-bold text-slate-900">{selectedVehicle.type}</p>
-              </div>
-              <div className="bg-slate-50 rounded-xl p-4">
-                <p className="text-xs text-slate-500 mb-1">Sürücü</p>
-                <p className="font-bold text-slate-900">{selectedVehicle.driver}</p>
-              </div>
-              <div className="bg-slate-50 rounded-xl p-4">
-                <p className="text-xs text-slate-500 mb-1">Kayıt Tarihi</p>
-                <p className="font-bold text-slate-900">{selectedVehicle.registrationDate}</p>
-              </div>
-              {selectedVehicle.lastService && (
-                <div className="bg-yellow-50 rounded-xl p-4 border border-yellow-200">
-                  <p className="text-xs text-yellow-600 mb-1">Son Bakım</p>
-                  <p className="font-bold text-yellow-900">{selectedVehicle.lastService}</p>
-                </div>
-              )}
-              <div className="bg-slate-50 rounded-xl p-4">
-                <p className="text-xs text-slate-500 mb-1">Durum</p>
-                <StatusBadge type="vehicle" status={selectedVehicle.status} />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
-                <p className="text-xs text-blue-600 mb-1">Tamamlanan İş</p>
-                <p className="text-2xl font-black text-blue-700">{selectedVehicle.totalJobs}</p>
-              </div>
-              <div className="bg-green-50 rounded-xl p-4 border border-green-200">
-                <p className="text-xs text-green-600 mb-1">Toplam Kazanç</p>
-                <p className="text-2xl font-black text-green-700">₺{selectedVehicle.totalEarnings.toLocaleString()}</p>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <p className="text-sm font-bold text-slate-700">Durum Değiştir:</p>
-              <div className="grid grid-cols-3 gap-3">
-                <button
-                  onClick={() => updateVehicleStatus(selectedVehicle.id, 'active')}
-                  className={`py-3 rounded-xl font-bold transition-all ${
-                    selectedVehicle.status === 'active'
-                      ? 'bg-green-600 text-white'
-                      : 'bg-green-50 text-green-600 hover:bg-green-100'
-                  }`}
-                >
-                  Aktif
-                </button>
-                <button
-                  onClick={() => updateVehicleStatus(selectedVehicle.id, 'maintenance')}
-                  className={`py-3 rounded-xl font-bold transition-all ${
-                    selectedVehicle.status === 'maintenance'
-                      ? 'bg-yellow-600 text-white'
-                      : 'bg-yellow-50 text-yellow-600 hover:bg-yellow-100'
-                  }`}
-                >
-                  Bakımda
-                </button>
-                <button
-                  onClick={() => updateVehicleStatus(selectedVehicle.id, 'disabled')}
-                  className={`py-3 rounded-xl font-bold transition-all ${
-                    selectedVehicle.status === 'disabled'
-                      ? 'bg-red-600 text-white'
-                      : 'bg-red-50 text-red-600 hover:bg-red-100'
-                  }`}
-                >
-                  Devre Dışı
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

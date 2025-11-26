@@ -1,29 +1,60 @@
 
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Phone, Lock, Eye, EyeOff, ArrowRight, Star, Briefcase } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Customer } from '../types';
 
 interface LoginPageProps {
   userType: 'customer' | 'partner';
-  onNavigateToRegister?: () => void;
-  onLoginSuccess?: (phone: string) => void;
 }
 
-const LoginPage: React.FC<LoginPageProps> = ({ userType, onNavigateToRegister, onLoginSuccess }) => {
-  // Login vs Register mode
-  // For Partners: Usually just Login here, Register is a separate application form
+// Test credentials
+const TEST_CREDENTIALS = {
+  customer: { phone: '05551234567', password: '123456' },
+  partner: { phone: '05559876543', password: 'partner123' }
+};
+
+const LoginPage: React.FC<LoginPageProps> = ({ userType }) => {
+  const navigate = useNavigate();
   const [mode, setMode] = useState<'login' | 'register'>('login');
   
   const [showPassword, setShowPassword] = useState(false);
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
 
   const isCustomer = userType === 'customer';
 
   const handleSubmit = () => {
-    // Call success callback for both user types if provided
-    if (onLoginSuccess) {
-      onLoginSuccess(phone);
+    setError('');
+    
+    const testCreds = TEST_CREDENTIALS[userType];
+    
+    // Test login kontrolü
+    if (phone === testCreds.phone && password === testCreds.password) {
+      if (isCustomer) {
+        // Mock customer profili oluştur
+        const mockCustomer: Customer = {
+          id: 'CUST-001',
+          firstName: 'Test',
+          lastName: 'Kullanıcı',
+          email: 'test@example.com',
+          phone: phone,
+          city: 'İstanbul',
+          district: 'Kadıköy',
+          address: 'Test Adres',
+          avatarUrl: ''
+        };
+        localStorage.setItem('yolmov_customer', JSON.stringify(mockCustomer));
+        navigate('/musteri/profil');
+      } else {
+        // Partner login
+        localStorage.setItem('yolmov_partner', JSON.stringify({ phone, name: 'Test Acente' }));
+        navigate('/partner');
+      }
+    } else {
+      setError('Telefon veya şifre hatalı!');
     }
   };
 
@@ -229,6 +260,20 @@ const LoginPage: React.FC<LoginPageProps> = ({ userType, onNavigateToRegister, o
                     </button>
                   </div>
                 )}
+
+                {/* Error Message */}
+                {error && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
+                    {error}
+                  </div>
+                )}
+                
+                {/* Test Credentials Info */}
+                <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-xl text-xs">
+                  <p className="font-bold mb-1">Test Girişi:</p>
+                  <p>Tel: {TEST_CREDENTIALS[userType].phone}</p>
+                  <p>Şifre: {TEST_CREDENTIALS[userType].password}</p>
+                </div>
 
                 {/* Action Button */}
                 <button 

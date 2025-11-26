@@ -30,6 +30,11 @@ const ProviderDetailPage = React.lazy(() => import('./components/ProviderDetailP
 const AdminLoginPage = React.lazy(() => import('./components/AdminLoginPage'));
 const AdminDashboard = React.lazy(() => import('./components/admin/AdminDashboard'));
 const AdminSystemLogs = React.lazy(() => import('./components/AdminSystemLogs'));
+const AdminUserDetailPage = React.lazy(() => import('./components/admin/pages/AdminUserDetailPage'));
+const AdminPartnerDetailPage = React.lazy(() => import('./components/admin/pages/AdminPartnerDetailPage'));
+const AdminRequestDetailPage = React.lazy(() => import('./components/admin/pages/AdminRequestDetailPage'));
+const AdminOfferDetailPage = React.lazy(() => import('./components/admin/pages/AdminOfferDetailPage'));
+const AdminFleetDetailPage = React.lazy(() => import('./components/admin/pages/AdminFleetDetailPage'));
 const NotificationTestPage = React.lazy(() => import('./components/NotificationTestPage'));
 const PrivacyPolicyPage = React.lazy(() => import('./components/PrivacyPolicyPage'));
 const TermsOfServicePage = React.lazy(() => import('./components/TermsOfServicePage'));
@@ -133,6 +138,22 @@ function App() {
             {/* Admin */}
             <Route path="/admin/giris" element={<AdminLoginPage />} />
             <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin/kullanicilar" element={<AdminDashboard />} />
+            <Route path="/admin/partnerler" element={<AdminDashboard />} />
+            <Route path="/admin/talepler" element={<AdminDashboard />} />
+            <Route path="/admin/teklifler" element={<AdminDashboard />} />
+            <Route path="/admin/raporlar" element={<AdminDashboard />} />
+            <Route path="/admin/belgeler" element={<AdminDashboard />} />
+            <Route path="/admin/filo" element={<AdminDashboard />} />
+            <Route path="/admin/degerlendirmeler" element={<AdminDashboard />} />
+            <Route path="/admin/finansal" element={<AdminDashboard />} />
+            <Route path="/admin/krediler" element={<AdminDashboard />} />
+            <Route path="/admin/is-gecmisi" element={<AdminDashboard />} />
+            <Route path="/admin/kullanici/:id" element={<AdminUserDetailPage />} />
+            <Route path="/admin/partner/:id" element={<AdminPartnerDetailPage />} />
+            <Route path="/admin/talep/:id" element={<AdminRequestDetailPage />} />
+            <Route path="/admin/teklif/:id" element={<AdminOfferDetailPage />} />
+            <Route path="/admin/filo/:vehicleId" element={<AdminFleetDetailPage />} />
             <Route path="/admin/sistem-loglari" element={<AdminSystemLogs />} />
             
             {/* Special Pages */}

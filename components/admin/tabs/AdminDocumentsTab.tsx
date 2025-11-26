@@ -111,9 +111,48 @@ const AdminDocumentsTab: React.FC = () => {
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [documents, setDocuments] = useState(MOCK_DOCUMENTS);
+  const [selectedPartner, setSelectedPartner] = useState<string>('all');
+  const [dateFilter, setDateFilter] = useState<string>('all');
+  const [documentTypeFilter, setDocumentTypeFilter] = useState<string>('all');
+
+  // Unique partner listesi
+  const uniquePartners = Array.from(new Set(MOCK_DOCUMENTS.map(d => d.partnerName))).sort();
+
+  // Filtrele
+  let filteredDocs = documents;
+  
+  // Partner filtresi
+  if (selectedPartner !== 'all') {
+    filteredDocs = filteredDocs.filter(d => d.partnerName === selectedPartner);
+  }
+
+  // Belge tipi filtresi
+  if (documentTypeFilter !== 'all') {
+    filteredDocs = filteredDocs.filter(d => d.documentType === documentTypeFilter);
+  }
+
+  // Tarih filtresi
+  if (dateFilter !== 'all') {
+    const now = new Date();
+    filteredDocs = filteredDocs.filter(d => {
+      const uploadDate = new Date(d.uploadDate);
+      switch (dateFilter) {
+        case 'today':
+          return uploadDate.toDateString() === now.toDateString();
+        case 'week':
+          const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          return uploadDate >= weekAgo;
+        case 'month':
+          const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          return uploadDate >= monthAgo;
+        default:
+          return true;
+      }
+    });
+  }
 
   const { filtered, searchTerm, setSearchTerm, filterType, setFilterType } = useAdminFilter<PartnerDocument>(
-    documents,
+    filteredDocs,
     { searchKeys: ['partnerName', 'fileName'], statusKey: 'status' }
   );
 
@@ -186,8 +225,8 @@ const AdminDocumentsTab: React.FC = () => {
       </div>
 
       {/* Filters */}
-      <div className="flex gap-4">
-        <div className="flex-1 relative">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="lg:col-span-2 relative">
           <Search size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
@@ -197,6 +236,46 @@ const AdminDocumentsTab: React.FC = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
+        
+        {/* Partner Dropdown Filtresi */}
+        <select
+          className="px-4 py-3 bg-white border border-slate-200 rounded-xl font-medium text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none"
+          value={selectedPartner}
+          onChange={(e) => setSelectedPartner(e.target.value)}
+        >
+          <option value="all">Tüm Acenteler</option>
+          {uniquePartners.map(partner => (
+            <option key={partner} value={partner}>{partner}</option>
+          ))}
+        </select>
+
+        {/* Belge Tipi Filtresi */}
+        <select
+          className="px-4 py-3 bg-white border border-slate-200 rounded-xl font-medium text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none"
+          value={documentTypeFilter}
+          onChange={(e) => setDocumentTypeFilter(e.target.value)}
+        >
+          <option value="all">Tüm Belge Tipleri</option>
+          {Object.entries(DOCUMENT_TYPE_LABELS).map(([key, label]) => (
+            <option key={key} value={key}>{label}</option>
+          ))}
+        </select>
+
+        {/* Tarih Filtresi */}
+        <select
+          className="px-4 py-3 bg-white border border-slate-200 rounded-xl font-medium text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none"
+          value={dateFilter}
+          onChange={(e) => setDateFilter(e.target.value)}
+        >
+          <option value="all">Tüm Zamanlar</option>
+          <option value="today">Bugün</option>
+          <option value="week">Son 7 Gün</option>
+          <option value="month">Son 30 Gün</option>
+        </select>
+      </div>
+
+      {/* Durum Filtresi (Ayrı Satır) */}
+      <div className="flex gap-4">
         <select
           className="px-4 py-3 bg-white border border-slate-200 rounded-xl font-medium text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none"
           value={filterType}
@@ -207,6 +286,27 @@ const AdminDocumentsTab: React.FC = () => {
           <option value="approved">Onaylı</option>
           <option value="rejected">Reddedilen</option>
         </select>
+        
+        {/* Aktif Filtre Sayacı */}
+        {(selectedPartner !== 'all' || dateFilter !== 'all' || documentTypeFilter !== 'all' || filterType !== 'all') && (
+          <div className="flex items-center gap-2 px-4 py-3 bg-orange-50 border border-orange-200 rounded-xl">
+            <Filter size={18} className="text-orange-600" />
+            <span className="text-sm font-bold text-orange-700">
+              {[selectedPartner !== 'all', dateFilter !== 'all', documentTypeFilter !== 'all', filterType !== 'all'].filter(Boolean).length} Filtre Aktif
+            </span>
+            <button
+              onClick={() => {
+                setSelectedPartner('all');
+                setDateFilter('all');
+                setDocumentTypeFilter('all');
+                setFilterType('all');
+              }}
+              className="ml-2 text-xs text-orange-600 hover:text-orange-700 font-bold underline"
+            >
+              Temizle
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Documents Table */}

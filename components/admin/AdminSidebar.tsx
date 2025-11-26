@@ -15,13 +15,13 @@ interface AdminSidebarProps {
 const AdminSidebar: React.FC<AdminSidebarProps> = ({ activeTab, onSelectTab, onLogout, role, mobile, onCloseMobile }) => {
   return (
     <div className={`flex flex-col h-full bg-slate-900 text-white w-64 ${mobile ? 'shadow-2xl' : ''}`}>      
-      <div className="p-6 border-b border-slate-800">
+      <div className="p-6 border-b border-slate-800 flex-shrink-0">
         <div className="cursor-pointer" onClick={() => onSelectTab('overview')}>
           <img src="https://raw.githubusercontent.com/yosoyorhan/repo2/refs/heads/main/yolmov-logo-cutter-beyaz.png" alt="YOLMOV Admin" className="h-10 w-auto object-contain mb-2" />
           <p className="text-xs text-slate-400 text-center">Admin Panel</p>
         </div>
       </div>
-      <nav className="flex-1 p-4 space-y-2" role="tablist" aria-label="Admin sekmeleri">
+      <nav className="flex-1 p-4 space-y-2 overflow-y-auto" role="tablist" aria-label="Admin sekmeleri">
         {adminTabs.filter(t => !t.allowedRoles || t.allowedRoles.includes(role)).map(item => (
           <button
             key={item.id}
@@ -38,7 +38,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ activeTab, onSelectTab, onL
           </button>
         ))}
       </nav>
-      <div className="p-4 border-t border-slate-800">
+      <div className="p-4 border-t border-slate-800 flex-shrink-0">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-10 h-10 rounded-full bg-slate-700 overflow-hidden">
             <img src="https://i.pravatar.cc/150?img=60" alt="Admin" />

@@ -1,6 +1,6 @@
-import React, { useState, lazy, Suspense } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Users, Shield, FileText, Search, Eye, Edit, Trash2, UserPlus, CheckCircle, DollarSign, Mail, Phone } from 'lucide-react';
+import React, { useState, lazy, Suspense, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Users, Shield, FileText, Search, Eye, Edit, Trash2, UserPlus, CheckCircle, DollarSign, Mail, Phone, Star } from 'lucide-react';
 import AdminSidebar from './AdminSidebar';
 import AdminHeader from './AdminHeader';
 import { AdminRole } from '../../types';
@@ -60,10 +60,53 @@ const MOCK_OFFERS: OfferLog[] = [
 
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'partners' | 'requests' | 'offers' | 'reports' | 'documents' | 'fleet' | 'reviews' | 'financial' | 'credits' | 'job-history'>('overview');
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [userTypeFilter, setUserTypeFilter] = useState<'all' | 'customer' | 'partner'>('all');
   const currentAdminRole: AdminRole = AdminRole.SUPER_ADMIN;
+
+  // URL'ye göre aktif tab'ı ayarla
+  useEffect(() => {
+    const pathMap: Record<string, typeof activeTab> = {
+      '/admin': 'overview',
+      '/admin/kullanicilar': 'users',
+      '/admin/partnerler': 'partners',
+      '/admin/talepler': 'requests',
+      '/admin/teklifler': 'offers',
+      '/admin/raporlar': 'reports',
+      '/admin/belgeler': 'documents',
+      '/admin/filo': 'fleet',
+      '/admin/degerlendirmeler': 'reviews',
+      '/admin/finansal': 'financial',
+      '/admin/krediler': 'credits',
+      '/admin/is-gecmisi': 'job-history'
+    };
+    const newTab = pathMap[location.pathname];
+    if (newTab) {
+      setActiveTab(newTab);
+    }
+  }, [location.pathname]);
+
+  // Tab değiştiğinde URL'i güncelle
+  const handleTabChange = (tabId: string) => {
+    const urlMap: Record<string, string> = {
+      'overview': '/admin',
+      'users': '/admin/kullanicilar',
+      'partners': '/admin/partnerler',
+      'requests': '/admin/talepler',
+      'offers': '/admin/teklifler',
+      'reports': '/admin/raporlar',
+      'documents': '/admin/belgeler',
+      'fleet': '/admin/filo',
+      'reviews': '/admin/degerlendirmeler',
+      'financial': '/admin/finansal',
+      'credits': '/admin/krediler',
+      'job-history': '/admin/is-gecmisi'
+    };
+    const newUrl = urlMap[tabId] || '/admin';
+    navigate(newUrl);
+  };
 
   const filteredUsers = userTypeFilter === 'all' ? MOCK_USERS : MOCK_USERS.filter(u => u.type === userTypeFilter);
   const usersFilter = useAdminFilter(filteredUsers, { searchKeys: ['name','email'] });
@@ -86,7 +129,7 @@ const AdminDashboard: React.FC = () => {
       <div className="hidden md:block">
         <AdminSidebar
           activeTab={activeTab}
-          onSelectTab={(id) => setActiveTab(id as any)}
+          onSelectTab={handleTabChange}
           onLogout={() => navigate('/')}
           role={currentAdminRole}
         />
@@ -94,7 +137,7 @@ const AdminDashboard: React.FC = () => {
       <div className={`fixed inset-y-0 left-0 z-40 transform md:hidden transition-transform duration-300 ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <AdminSidebar
           activeTab={activeTab}
-          onSelectTab={(id) => setActiveTab(id as any)}
+          onSelectTab={handleTabChange}
           onLogout={() => navigate('/')}
           role={currentAdminRole}
           mobile
@@ -222,7 +265,7 @@ const AdminDashboard: React.FC = () => {
                           <td className="px-6 py-4 text-sm text-slate-600" role="cell">{user.joinDate}</td>
                           <td className="px-6 py-4 text-sm font-bold text-slate-900" role="cell">₺{(user.totalSpent || user.totalEarned || 0).toLocaleString()}</td>
                           <td className="px-6 py-4 text-right" role="cell">
-                            <button className="p-2 text-slate-400 hover:text-blue-600" aria-label={`Kullanıcı ${user.id} görüntüle`}><Eye size={18} /></button>
+                            <button onClick={() => navigate(`/admin/kullanici/${user.id}`)} className="p-2 text-slate-400 hover:text-blue-600" aria-label={`Kullanıcı ${user.id} görüntüle`}><Eye size={18} /></button>
                             <button className="p-2 text-slate-400 hover:text-orange-600" aria-label={`Kullanıcı ${user.id} düzenle`}><Edit size={18} /></button>
                             <button className="p-2 text-slate-400 hover:text-red-600" aria-label={`Kullanıcı ${user.id} sil`}><Trash2 size={18} /></button>
                           </td>
@@ -261,36 +304,59 @@ const AdminDashboard: React.FC = () => {
                   <option value="suspended">Askıda</option>
                 </select>
               </div>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6" role="region" aria-label="Partner kartları">
-                {partnersFilter.filtered.length === 0 ? <EmptyState title="Partner Yok" description="Arama kriterine uygun partner yok." /> : partnersFilter.filtered.map(partner => (
-                  <div key={partner.id} className="bg-white rounded-2xl border border-slate-200 p-6">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items_center gap-3">
-                        <div className="w-14 h-14 bg-orange-100 rounded-xl flex items-center justify-center"><Shield size={28} className="text-orange-600" /></div>
-                        <div>
-                          <h3 className="font-bold text-slate-900">{partner.name}</h3>
-                          <p className="text-xs text-slate-500">{partner.id}</p>
-                        </div>
-                      </div>
-                      <StatusBadge type="partner" status={partner.status} />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4 mb-4">
-                      <div className="bg-slate-50 rounded-xl p-3"><p className="text-xs text-slate-500 mb-1">Tamamlanan</p><p className="text-xl font-bold text-slate-900">{partner.completedJobs}</p></div>
-                      <div className="bg-slate-50 rounded-xl p-3"><p className="text-xs text-slate-500 mb-1">Puan</p><p className="text-xl font-bold text-yellow-600">★ {partner.rating}</p></div>
-                    </div>
-                    <div className="flex items-center justify_between text-sm text-slate-600 mb-4">
-                      <div className="flex items-center gap-2"><Mail size={16} /><span>{partner.email}</span></div>
-                      <div className="flex items-center gap-2"><Phone size={16} /><span>{partner.phone}</span></div>
-                    </div>
-                    <div className="flex items-center justify-between pt-4 border-t border-slate-100">
-                      <div className="flex items-center gap-2 text-sm"><DollarSign size={16} className="text-orange-500" /><span className="font-bold text-slate-900">{partner.credits} Kredi</span></div>
-                      <div className="flex gap-2">
-                        <button className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg text-xs font-bold hover:bg-blue-100" aria-label={`Partner ${partner.id} görüntüle`}>Görüntüle</button>
-                        <button className="px-4 py-2 bg-orange-50 text-orange-600 rounded-lg text-xs font-bold hover:bg-orange-100" aria-label={`Partner ${partner.id} düzenle`}>Düzenle</button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+              <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden" role="region" aria-label="Partner listesi">
+                {partnersFilter.filtered.length === 0 ? <EmptyState title="Partner Yok" description="Arama kriterine uygun partner yok." /> : (
+                  <table className="w-full" role="table">
+                    <thead className="bg-slate-50 border-b border-slate-200" role="rowgroup">
+                      <tr role="row">
+                        <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase" role="columnheader">Partner</th>
+                        <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase" role="columnheader">İletişim</th>
+                        <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase" role="columnheader">Puan</th>
+                        <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase" role="columnheader">İş Sayısı</th>
+                        <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase" role="columnheader">Kredi</th>
+                        <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase" role="columnheader">Durum</th>
+                        <th className="px-6 py-4 text-right text-xs font-bold text-slate-600 uppercase" role="columnheader">İşlemler</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100" role="rowgroup">
+                      {partnersFilter.filtered.map(partner => (
+                        <tr key={partner.id} className="hover:bg-slate-50" role="row">
+                          <td className="px-6 py-4" role="cell">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center"><Shield size={20} className="text-orange-600" /></div>
+                              <div>
+                                <p className="font-bold text-slate-900">{partner.name}</p>
+                                <p className="text-xs text-slate-500">{partner.id}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4" role="cell">
+                            <div className="text-sm">
+                              <p className="text-slate-900">{partner.email}</p>
+                              <p className="text-slate-500">{partner.phone}</p>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4" role="cell">
+                            <div className="flex items-center gap-1">
+                              <Star size={16} className="text-yellow-500 fill-yellow-500" />
+                              <span className="font-bold text-slate-900">{partner.rating}</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 font-bold text-slate-900" role="cell">{partner.completedJobs}</td>
+                          <td className="px-6 py-4" role="cell">
+                            <span className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-sm font-bold">{partner.credits}</span>
+                          </td>
+                          <td className="px-6 py-4" role="cell"><StatusBadge type="partner" status={partner.status} /></td>
+                          <td className="px-6 py-4 text-right" role="cell">
+                            <button onClick={() => navigate(`/admin/partner/${partner.id}`)} className="p-2 text-slate-400 hover:text-blue-600" aria-label={`Partner ${partner.id} görüntüle`}><Eye size={18} /></button>
+                            <button className="p-2 text-slate-400 hover:text-orange-600" aria-label={`Partner ${partner.id} düzenle`}><Edit size={18} /></button>
+                            <button className="p-2 text-slate-400 hover:text-red-600" aria-label={`Partner ${partner.id} sil`}><Trash2 size={18} /></button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
               </div>
             </div>
           )}
@@ -345,7 +411,7 @@ const AdminDashboard: React.FC = () => {
                           <td className="px-6 py-4" role="cell"><StatusBadge type="request" status={req.status} /></td>
                           <td className="px-6 py-4 text-sm text-slate-600" role="cell">{req.createdAt}</td>
                           <td className="px-6 py-4 text-sm font-bold text-slate-900" role="cell">{req.amount ? `₺${req.amount}` : '-'}</td>
-                          <td className="px-6 py-4 text-right" role="cell"><button className="p-2 text-slate-400 hover:text-blue-600" aria-label={`Talep ${req.id} görüntüle`}><Eye size={18} /></button></td>
+                          <td className="px-6 py-4 text-right" role="cell"><button onClick={() => navigate(`/admin/talep/${req.id}`)} className="p-2 text-slate-400 hover:text-blue-600" aria-label={`Talep ${req.id} görüntüle`}><Eye size={18} /></button></td>
                         </tr>
                       ))}
                     </tbody>

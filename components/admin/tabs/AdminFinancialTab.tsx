@@ -163,7 +163,6 @@ const AdminFinancialTab: React.FC = () => {
 
   const stats = {
     totalRevenue: payments.filter(p => p.status === 'completed').reduce((sum, p) => sum + p.amount, 0),
-    totalCommission: payments.filter(p => p.status === 'completed').reduce((sum, p) => sum + p.commission, 0),
     totalPartnerEarnings: payments.filter(p => p.status === 'completed').reduce((sum, p) => sum + p.partnerEarning, 0),
     pendingAmount: payments.filter(p => p.status === 'pending').reduce((sum, p) => sum + p.amount, 0),
     refundedAmount: payments.filter(p => p.status === 'refunded').reduce((sum, p) => sum + p.amount, 0),
@@ -207,7 +206,7 @@ const AdminFinancialTab: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-4 text-white">
           <div className="flex items-center justify-between mb-2">
             <TrendingUp size={20} />
@@ -216,18 +215,10 @@ const AdminFinancialTab: React.FC = () => {
           <p className="text-2xl font-black">{stats.totalRevenue.toLocaleString('tr-TR')}₺</p>
           <p className="text-xs opacity-80">{stats.completed} tamamlanan iş</p>
         </div>
-        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-4 text-white">
-          <div className="flex items-center justify-between mb-2">
-            <DollarSign size={20} />
-            <span className="text-xs font-bold">Komisyon</span>
-          </div>
-          <p className="text-2xl font-black">{stats.totalCommission.toLocaleString('tr-TR')}₺</p>
-          <p className="text-xs opacity-80">%{((stats.totalCommission / stats.totalRevenue) * 100).toFixed(1)} oran</p>
-        </div>
         <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-4 text-white">
           <div className="flex items-center justify-between mb-2">
             <TrendingUp size={20} />
-            <span className="text-xs font-bold">Partner Kazancı</span>
+            <span className="text-xs font-bold">Partner Kazançları</span>
           </div>
           <p className="text-2xl font-black">{stats.totalPartnerEarnings.toLocaleString('tr-TR')}₺</p>
           <p className="text-xs opacity-80">Dağıtılan toplam</p>
@@ -309,9 +300,8 @@ const AdminFinancialTab: React.FC = () => {
                 <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase">Partner</th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase">Müşteri</th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase">Hizmet</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase">Tutar</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase">Komisyon</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase">Partner</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase">Toplam Tutar</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase">Partner Kazanç</th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase">Yöntem</th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase">Durum</th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase">İşlem</th>
@@ -320,7 +310,7 @@ const AdminFinancialTab: React.FC = () => {
             <tbody className="divide-y divide-slate-200">
               {filteredByStatus.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="px-6 py-12">
+                  <td colSpan={9} className="px-6 py-12">
                     <EmptyState title="Ödeme Bulunamadı" description="Arama kriterinize uygun ödeme kaydı yok." />
                   </td>
                 </tr>
@@ -344,10 +334,6 @@ const AdminFinancialTab: React.FC = () => {
                     </td>
                     <td className="px-6 py-4">
                       <p className="font-bold text-slate-900">{payment.amount.toLocaleString('tr-TR')}₺</p>
-                    </td>
-                    <td className="px-6 py-4">
-                      <p className="font-bold text-blue-600">{payment.commission.toLocaleString('tr-TR')}₺</p>
-                      <p className="text-xs text-slate-500">%{((payment.commission / payment.amount) * 100).toFixed(0)}</p>
                     </td>
                     <td className="px-6 py-4">
                       <p className="font-bold text-green-600">{payment.partnerEarning.toLocaleString('tr-TR')}₺</p>
