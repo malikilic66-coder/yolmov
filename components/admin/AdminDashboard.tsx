@@ -62,9 +62,11 @@ const MOCK_OFFERS: OfferLog[] = [
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'partners' | 'requests' | 'offers' | 'reports' | 'documents' | 'fleet' | 'reviews' | 'financial' | 'credits' | 'job-history'>('overview');
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [userTypeFilter, setUserTypeFilter] = useState<'all' | 'customer' | 'partner'>('all');
   const currentAdminRole: AdminRole = AdminRole.SUPER_ADMIN;
 
-  const usersFilter = useAdminFilter(MOCK_USERS, { searchKeys: ['name','email'] });
+  const filteredUsers = userTypeFilter === 'all' ? MOCK_USERS : MOCK_USERS.filter(u => u.type === userTypeFilter);
+  const usersFilter = useAdminFilter(filteredUsers, { searchKeys: ['name','email'] });
   const partnersFilter = useAdminFilter(MOCK_PARTNERS, { searchKeys: ['name','email'], statusKey: 'status' });
   const requestsFilter = useAdminFilter(MOCK_REQUESTS, { searchKeys: ['id','customerName'], statusKey: 'status' });
 
@@ -74,6 +76,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     activeRequests: MOCK_REQUESTS.filter(r => r.status === 'open').length,
     completedRequests: MOCK_REQUESTS.filter(r => r.status === 'completed').length,
     totalRevenue: MOCK_REQUESTS.filter(r => r.amount).reduce((sum, r) => sum + (r.amount || 0), 0),
+    b2cUsers: MOCK_USERS.filter(u => u.type === 'customer').length,
+    b2bUsers: MOCK_USERS.filter(u => u.type === 'partner').length,
   };
 
   return (
@@ -177,6 +181,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                     aria-label="Kullanıcı arama"
                   />
                 </div>
+                <select
+                  className="px-4 py-3 bg-white border border-slate-200 rounded-xl font-medium text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none"
+                  value={userTypeFilter}
+                  onChange={(e) => setUserTypeFilter(e.target.value as 'all' | 'customer' | 'partner')}
+                  aria-label="Kullanıcı tipi filtresi"
+                >
+                  <option value="all">Tüm Kullanıcılar</option>
+                  <option value="customer">Sadece Müşteriler (B2C)</option>
+                  <option value="partner">Sadece Partnerler (B2B)</option>
+                </select>
                 <button className="px-6 py-3 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 flex items-center gap-2" aria-label="Yeni kullanıcı oluştur">
                   <UserPlus size={20} /> Yeni Kullanıcı
                 </button>
