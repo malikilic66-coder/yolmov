@@ -360,15 +360,6 @@ const AdminReviewsTab: React.FC = () => {
           </table>
         )}
       </div>
-                      İtirazı Reddet
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-          ))
-        )}
-      </div>
 
       {/* Review Detail Modal */}
       {selectedReview && (

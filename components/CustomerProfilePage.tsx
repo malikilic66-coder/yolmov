@@ -176,7 +176,6 @@ const CustomerProfilePage: React.FC = () => {
                 </div>
                 <div className="flex flex-col gap-2 mt-6 w-full">
                   <button 
-                      onClick={() => navigate('/musteri/teklifler')} 
                       className="w-full py-3 rounded-xl bg-brand-orange text-white text-sm font-bold hover:bg-brand-lightOrange transition-colors shadow-lg"
                       onClick={handleViewOffers}
                     >
