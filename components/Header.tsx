@@ -1,21 +1,32 @@
 import React, { useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Menu, X, Briefcase } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import NotificationCenter from './shared/NotificationCenter';
+import { Customer } from '../types';
 
 interface HeaderProps {
-  onNavigate: (page: 'home' | 'about' | 'services' | 'faq' | 'contact' | 'login-customer' | 'admin-login') => void;
-  onLoginClick: () => void;
-  onAgencyLoginClick: () => void;
-  onPartnerClick: () => void;
-  customer?: { firstName: string; lastName: string; avatarUrl?: string } | null;
-  onCustomerProfile?: () => void;
-  onCustomerLogout?: () => void;
+  // Remove callback props - using useNavigate instead
 }
 
-const Header: React.FC<HeaderProps> = ({ onNavigate, onLoginClick, onAgencyLoginClick, onPartnerClick, customer, onCustomerProfile, onCustomerLogout }) => {
+const Header: React.FC<HeaderProps> = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+
+  // Get customer from localStorage
+  const [customer, setCustomer] = useState<Customer | null>(() => {
+    const saved = localStorage.getItem('yolmov_customer');
+    return saved ? JSON.parse(saved) : null;
+  });
+
+  const handleLogout = () => {
+    localStorage.removeItem('yolmov_customer');
+    setCustomer(null);
+    setIsProfileMenuOpen(false);
+    navigate('/');
+  };
 
   const toggleMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
 
@@ -28,7 +39,7 @@ const Header: React.FC<HeaderProps> = ({ onNavigate, onLoginClick, onAgencyLogin
           {/* Logo Area */}
           <div 
             className="flex items-center cursor-pointer shrink-0"
-            onClick={() => onNavigate('home')}
+            onClick={() => navigate('/')}
           >
             <img 
               src="https://raw.githubusercontent.com/yosoyorhan/repo2/refs/heads/main/yolmov-logo-cutter.png" 
@@ -40,25 +51,25 @@ const Header: React.FC<HeaderProps> = ({ onNavigate, onLoginClick, onAgencyLogin
           {/* Desktop Navigation - Left Aligned */}
           <nav className="hidden md:flex items-center space-x-6 lg:space-x-8">
             <button 
-              onClick={() => onNavigate('about')}
+              onClick={() => navigate('/hakkimizda')}
               className="text-gray-600 hover:text-brand-orange font-medium transition-colors text-sm lg:text-base whitespace-nowrap"
             >
               Hakkımızda
             </button>
             <button 
-              onClick={() => onNavigate('services')}
+              onClick={() => navigate('/hizmetler')}
               className="text-gray-600 hover:text-brand-orange font-medium transition-colors text-sm lg:text-base whitespace-nowrap"
             >
               Hizmetler
             </button>
             <button 
-              onClick={() => onNavigate('contact')}
+              onClick={() => navigate('/iletisim')}
               className="text-gray-600 hover:text-brand-orange font-medium transition-colors text-sm lg:text-base whitespace-nowrap"
             >
               İletişim
             </button>
             <button 
-              onClick={() => onNavigate('faq')}
+              onClick={() => navigate('/sss')}
               className="text-gray-600 hover:text-brand-orange font-medium transition-colors text-sm lg:text-base whitespace-nowrap"
             >
               SSS
@@ -72,7 +83,7 @@ const Header: React.FC<HeaderProps> = ({ onNavigate, onLoginClick, onAgencyLogin
           {!customer && (
             <>
               <button 
-                onClick={onAgencyLoginClick}
+                onClick={() => navigate('/giris/partner')}
                 className="text-sm font-bold text-gray-500 hover:text-blue-600 px-3 py-2 transition-colors flex items-center gap-1"
               >
                 <Briefcase size={16} />
@@ -80,13 +91,13 @@ const Header: React.FC<HeaderProps> = ({ onNavigate, onLoginClick, onAgencyLogin
               </button>
               <div className="w-px h-6 bg-gray-200 mx-1"></div>
               <button 
-                onClick={onLoginClick}
+                onClick={() => navigate('/giris/musteri')}
                 className="px-6 py-2.5 rounded-xl border border-brand-orange text-brand-orange font-semibold hover:bg-orange-50 transition-colors"
               >
                 Giriş Yap
               </button>
               <button 
-                onClick={onPartnerClick}
+                onClick={() => navigate('/partner/kayit')}
                 className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-brand-orange to-brand-lightOrange text-white font-semibold shadow-md hover:shadow-lg hover:opacity-95 transition-all transform hover:-translate-y-0.5"
               >
                 Partner Ol
@@ -107,12 +118,12 @@ const Header: React.FC<HeaderProps> = ({ onNavigate, onLoginClick, onAgencyLogin
               {isProfileMenuOpen && (
                 <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-100 py-2 z-50 animate-fade-in">
                   <button 
-                    onClick={() => { onCustomerProfile && onCustomerProfile(); setIsProfileMenuOpen(false); }}
+                    onClick={() => { navigate('/musteri/profil'); setIsProfileMenuOpen(false); }}
                     className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                   >Profilim</button>
                   <div className="my-1 h-px bg-gray-100"></div>
                   <button 
-                    onClick={() => { onCustomerLogout && onCustomerLogout(); setIsProfileMenuOpen(false); }}
+                    onClick={() => { handleLogout(); setIsProfileMenuOpen(false); }}
                     className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
                   >Çıkış Yap</button>
                 </div>
@@ -139,7 +150,7 @@ const Header: React.FC<HeaderProps> = ({ onNavigate, onLoginClick, onAgencyLogin
             <div className="flex flex-col p-6 space-y-4">
               <button 
                 onClick={() => {
-                  onNavigate('about');
+                  navigate('/hakkimizda');
                   setIsMobileMenuOpen(false);
                 }}
                 className="text-lg font-medium text-gray-700 py-2 border-b border-gray-50 text-left"
@@ -148,7 +159,7 @@ const Header: React.FC<HeaderProps> = ({ onNavigate, onLoginClick, onAgencyLogin
               </button>
               <button 
                 onClick={() => {
-                  onNavigate('services');
+                  navigate('/hizmetler');
                   setIsMobileMenuOpen(false);
                 }}
                 className="text-lg font-medium text-gray-700 py-2 border-b border-gray-50 text-left"
@@ -157,7 +168,7 @@ const Header: React.FC<HeaderProps> = ({ onNavigate, onLoginClick, onAgencyLogin
               </button>
               <button 
                 onClick={() => {
-                  onNavigate('contact');
+                  navigate('/iletisim');
                   setIsMobileMenuOpen(false);
                 }}
                 className="text-lg font-medium text-gray-700 py-2 border-b border-gray-50 text-left"
@@ -166,7 +177,7 @@ const Header: React.FC<HeaderProps> = ({ onNavigate, onLoginClick, onAgencyLogin
               </button>
               <button 
                 onClick={() => {
-                  onNavigate('faq');
+                  navigate('/sss');
                   setIsMobileMenuOpen(false);
                 }}
                 className="text-lg font-medium text-gray-700 py-2 border-b border-gray-50 text-left"
@@ -178,7 +189,7 @@ const Header: React.FC<HeaderProps> = ({ onNavigate, onLoginClick, onAgencyLogin
                   <>
                     <button 
                       onClick={() => {
-                        onLoginClick();
+                        navigate('/giris/musteri');
                         setIsMobileMenuOpen(false);
                       }}
                       className="w-full py-3 rounded-xl border border-brand-orange text-brand-orange font-semibold"
@@ -187,7 +198,7 @@ const Header: React.FC<HeaderProps> = ({ onNavigate, onLoginClick, onAgencyLogin
                     </button>
                     <button 
                       onClick={() => {
-                        onAgencyLoginClick();
+                        navigate('/giris/partner');
                         setIsMobileMenuOpen(false);
                       }}
                       className="w-full py-3 rounded-xl border border-blue-600 text-blue-600 font-semibold flex items-center justify-center gap-2"
@@ -196,7 +207,7 @@ const Header: React.FC<HeaderProps> = ({ onNavigate, onLoginClick, onAgencyLogin
                     </button>
                     <button 
                       onClick={() => {
-                        onPartnerClick();
+                        navigate('/partner/kayit');
                         setIsMobileMenuOpen(false);
                       }}
                       className="w-full py-3 rounded-xl bg-brand-orange text-white font-semibold shadow-md"
@@ -209,7 +220,7 @@ const Header: React.FC<HeaderProps> = ({ onNavigate, onLoginClick, onAgencyLogin
                   <>
                     <button 
                       onClick={() => {
-                        onCustomerProfile && onCustomerProfile();
+                        navigate('/musteri/profil');
                         setIsMobileMenuOpen(false);
                       }}
                       className="w-full py-3 rounded-xl bg-gray-100 text-gray-700 font-semibold"
@@ -218,7 +229,7 @@ const Header: React.FC<HeaderProps> = ({ onNavigate, onLoginClick, onAgencyLogin
                     </button>
                     <button 
                       onClick={() => {
-                        onCustomerLogout && onCustomerLogout();
+                        handleLogout();
                         setIsMobileMenuOpen(false);
                       }}
                       className="w-full py-3 rounded-xl bg-red-50 text-red-600 font-semibold"

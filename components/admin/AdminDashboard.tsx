@@ -1,4 +1,5 @@
 import React, { useState, lazy, Suspense } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Users, Shield, FileText, Search, Eye, Edit, Trash2, UserPlus, CheckCircle, DollarSign, Mail, Phone } from 'lucide-react';
 import AdminSidebar from './AdminSidebar';
 import AdminHeader from './AdminHeader';
@@ -16,8 +17,6 @@ const AdminReviewsTab = lazy(() => import('./tabs/AdminReviewsTab'));
 const AdminFinancialTab = lazy(() => import('./tabs/AdminFinancialTab'));
 const AdminCreditsTab = lazy(() => import('./tabs/AdminCreditsTab'));
 const AdminJobHistoryTab = lazy(() => import('./tabs/AdminJobHistoryTab'));
-
-interface AdminDashboardProps { onLogout: () => void; }
 
 interface User {
   id: string; name: string; email: string;
@@ -59,7 +58,8 @@ const MOCK_OFFERS: OfferLog[] = [
   { id: 'OFF-003', partnerId: 'PTR-001', partnerName: 'Yılmaz Oto', requestId: 'REQ-003', price: 600, status: 'sent', createdAt: '2023-11-24 11:05' },
 ];
 
-const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
+const AdminDashboard: React.FC = () => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'partners' | 'requests' | 'offers' | 'reports' | 'documents' | 'fleet' | 'reviews' | 'financial' | 'credits' | 'job-history'>('overview');
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [userTypeFilter, setUserTypeFilter] = useState<'all' | 'customer' | 'partner'>('all');
@@ -87,7 +87,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         <AdminSidebar
           activeTab={activeTab}
           onSelectTab={(id) => setActiveTab(id as any)}
-          onLogout={onLogout}
+          onLogout={() => navigate('/')}
           role={currentAdminRole}
         />
       </div>
@@ -95,7 +95,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         <AdminSidebar
           activeTab={activeTab}
           onSelectTab={(id) => setActiveTab(id as any)}
-          onLogout={onLogout}
+          onLogout={() => navigate('/')}
           role={currentAdminRole}
           mobile
           onCloseMobile={() => setMobileSidebarOpen(false)}

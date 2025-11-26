@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import QuoteWizard from './QuoteWizard';
 import { 
   ShieldCheck, Clock, Users, ArrowLeft, 
@@ -7,11 +8,6 @@ import {
   CheckCircle2, Star
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-
-interface QuotePageProps {
-  onHome: () => void;
-  onViewOffers?: () => void;
-}
 
 // --- MOCK DATA FOR LIVE ACTIVITY ---
 const RECENT_ACTIVITIES = [
@@ -159,7 +155,8 @@ const FaqSection = () => {
   );
 };
 
-const QuotePage: React.FC<QuotePageProps> = ({ onHome, onViewOffers }) => {
+const QuotePage: React.FC = () => {
+  const navigate = useNavigate();
   return (
     <div className="min-h-screen bg-[#F8FAFC] py-8 px-4 md:px-8 relative">
       {/* Technical Background Grid Pattern */}
@@ -172,7 +169,7 @@ const QuotePage: React.FC<QuotePageProps> = ({ onHome, onViewOffers }) => {
         
         {/* Mobile Back Button */}
         <button 
-           onClick={onHome}
+           onClick={() => navigate('/')}
            className="lg:hidden flex items-center gap-2 text-gray-500 hover:text-brand-orange font-medium mb-6 bg-white px-4 py-2 rounded-xl shadow-sm border border-gray-100"
         >
            <ArrowLeft size={18} /> Ana Sayfa
@@ -231,7 +228,7 @@ const QuotePage: React.FC<QuotePageProps> = ({ onHome, onViewOffers }) => {
               </div>
 
               {/* Main Form Wizard */}
-              <QuoteWizard onHome={onHome} onViewOffers={onViewOffers} />
+              <QuoteWizard />
 
               {/* FAQ Section (Below Form) */}
               <FaqSection />

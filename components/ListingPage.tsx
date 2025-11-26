@@ -1,13 +1,14 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   Clock, MapPin, ShieldCheck, Search, 
   ClipboardList, ArrowRight, User, Calendar, 
-  CheckCircle2, Star, ChevronRight, Map
+  CheckCircle2, Star, ChevronRight, Map, Filter, DollarSign, X, ChevronDown
 } from 'lucide-react';
-import { PROVIDERS } from '../constants';
+import { motion, AnimatePresence } from 'framer-motion';
+import { PROVIDERS, CITIES_WITH_DISTRICTS, SERVICES } from '../constants';
 import { Provider } from '../types';
-import { motion } from 'framer-motion';
 
 interface ListingPageProps {
   initialCity?: string;
@@ -84,13 +85,13 @@ const ProviderCard = ({ provider, index, onClick }: { provider: Provider, index:
   );
 };
 
-const ListingPage: React.FC<ListingPageProps> = ({ 
-  initialCity = 'İstanbul', 
-  initialDistrict = '', 
-  initialServiceId = '',
-  onNavigateToQuote,
-  onProviderClick
-}) => {
+const ListingPage: React.FC = () => {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  
+  const initialCity = searchParams.get('city') || 'İstanbul';
+  const initialDistrict = searchParams.get('district') || '';
+  const initialServiceId = searchParams.get('serviceId') || '';
   const [sortBy, setSortBy] = useState('eta');
   
   // Demo State: Randomly force empty state to show the "No Results" design
@@ -246,7 +247,12 @@ const ListingPage: React.FC<ListingPageProps> = ({
             
             {displayProviders.length > 0 ? (
               displayProviders.map((provider, index) => (
-                <ProviderCard key={provider.id} provider={provider} index={index} onClick={onProviderClick} />
+                <ProviderCard 
+                  key={provider.id} 
+                  provider={provider} 
+                  index={index} 
+                  onClick={(p) => navigate(`/hizmet/${p.id}`, { state: { provider: p } })} 
+                />
               ))
             ) : (
               /* --- EMPTY STATE --- */
@@ -267,7 +273,7 @@ const ListingPage: React.FC<ListingPageProps> = ({
                   </p>
 
                   <button 
-                     onClick={onNavigateToQuote}
+                     onClick={() => navigate('/teklif')}
                      className="w-full md:w-auto px-8 py-4 bg-brand-orange text-white font-bold rounded-xl shadow-lg shadow-orange-200 hover:bg-brand-lightOrange transition-all hover:-translate-y-1 flex items-center justify-center gap-3"
                   >
                      <ClipboardList size={20} /> Hemen Ücretsiz Teklif Al

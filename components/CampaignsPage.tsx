@@ -15,7 +15,7 @@ const CampaignsPage: React.FC<CampaignsPageProps> = ({ onBack }) => {
         <div className="container mx-auto max-w-6xl">
           {onBack && (
             <button 
-              onClick={onBack}
+              onClick={() => navigate('/')}
               className="inline-flex items-center gap-2 text-gray-300 hover:text-white mb-6 text-sm font-bold"
             >
               <ArrowLeft size={18}/> Geri Dön

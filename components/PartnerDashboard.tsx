@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, List, History, Wallet, Settings, LogOut, 
   Bell, ChevronRight, MapPin, Clock, DollarSign, CheckCircle, 
@@ -20,10 +21,6 @@ import PartnerOfferHistory from './PartnerOfferHistory';
 import PartnerPayments from './PartnerPayments';
 import PartnerDocuments from './PartnerDocuments';
 import { compressImage, isImageFile, createPreviewUrl } from '../utils/imageCompression';
-
-interface PartnerDashboardProps {
-  onLogout: () => void;
-}
 
 // MOCK HISTORY DATA
 const MOCK_HISTORY = [
@@ -167,7 +164,8 @@ const MOCK_REVIEWS = [
   }
 ];
 
-const PartnerDashboard: React.FC<PartnerDashboardProps> = ({ onLogout }) => {
+const PartnerDashboard: React.FC = () => {
+  const navigate = useNavigate();
   const [isOnline, setIsOnline] = useState(true);
   const [activeTab, setActiveTab] = useState('home');
   const [requests, setRequests] = useState<JobRequest[]>(MOCK_PARTNER_REQUESTS);
@@ -4365,7 +4363,7 @@ const PartnerDashboard: React.FC<PartnerDashboardProps> = ({ onLogout }) => {
               </div>
             </div>
           </button>
-          <button onClick={onLogout} className="w-full flex items-center justify-center lg:justify-start p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"><LogOut size={18} /><span className="hidden lg:block ml-2 text-sm font-medium">Çıkış Yap</span></button>
+          <button onClick={() => navigate('/')} className="w-full flex items-center justify-center lg:justify-start p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"><LogOut size={18} /><span className="hidden lg:block ml-2 text-sm font-medium">Çıkış Yap</span></button>
         </div>
       </div>
 

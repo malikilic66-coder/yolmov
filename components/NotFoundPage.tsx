@@ -1,12 +1,10 @@
 import React from 'react';
-import { Home, Search, AlertCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { AlertTriangle, Home, ArrowLeft } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-interface NotFoundPageProps {
-  onNavigateHome: () => void;
-}
-
-const NotFoundPage: React.FC<NotFoundPageProps> = ({ onNavigateHome }) => {
+const NotFoundPage: React.FC = () => {
+  const navigate = useNavigate();
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center px-4">
       <div className="max-w-2xl w-full text-center">
@@ -69,7 +67,7 @@ const NotFoundPage: React.FC<NotFoundPageProps> = ({ onNavigateHome }) => {
             className="flex flex-col sm:flex-row gap-4 justify-center items-center"
           >
             <button
-              onClick={onNavigateHome}
+              onClick={() => navigate('/')}
               className="px-8 py-4 bg-gradient-to-r from-brand-orange to-orange-600 text-white rounded-xl font-bold shadow-lg shadow-orange-500/30 hover:shadow-xl hover:scale-105 transition-all flex items-center gap-2"
             >
               <Home size={20} />

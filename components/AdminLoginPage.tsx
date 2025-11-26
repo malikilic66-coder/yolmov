@@ -1,12 +1,10 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Shield, Lock, Mail, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-interface AdminLoginPageProps {
-  onLogin: () => void;
-}
-
-const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onLogin }) => {
+const AdminLoginPage: React.FC = () => {
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -17,7 +15,7 @@ const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onLogin }) => {
     
     // Mock admin credentials
     if (email === 'admin@yolmov.com' && password === 'admin123') {
-      onLogin();
+      navigate('/admin');
     } else {
       setError('Geçersiz e-posta veya şifre');
     }

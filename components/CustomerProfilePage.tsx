@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Customer } from '../types';
 import { 
   Phone, Mail, MapPin, User, Edit3, Check, X, Calendar, ShieldCheck, LogOut,
@@ -6,14 +7,6 @@ import {
   Star, ChevronRight, Package, Eye, EyeOff, AlertCircle, CheckCircle2
 } from 'lucide-react';
 import { CITIES_WITH_DISTRICTS } from '../constants';
-
-interface CustomerProfilePageProps {
-  customer: Customer;
-  onUpdate: (updated: Customer) => void;
-  onLogout: () => void;
-  onBackHome: () => void;
-  onViewOffers?: () => void;
-}
 
 // Mock Data for Extended Features
 const MOCK_ORDERS = [
@@ -33,7 +26,30 @@ const MOCK_SAVED_ADDRESSES = [
   { id: 2, label: 'İş', type: 'work', address: 'Maslak Meydan Sok. Veko Giz Plaza', city: 'İstanbul', district: 'Sarıyer' }
 ];
 
-const CustomerProfilePage: React.FC<CustomerProfilePageProps> = ({ customer, onUpdate, onLogout, onBackHome, onViewOffers }) => {
+const CustomerProfilePage: React.FC = () => {
+  const navigate = useNavigate();
+  
+  // Get customer from localStorage
+  const storedCustomer = useMemo(() => {
+    const stored = localStorage.getItem('yolmov_customer');
+    if (stored) {
+      try {
+        return JSON.parse(stored) as Customer;
+      } catch (e) {
+        console.error('Failed to parse customer data:', e);
+      }
+    }
+    return null;
+  }, []);
+
+  // Redirect if not logged in
+  React.useEffect(() => {
+    if (!storedCustomer) {
+      navigate('/giris/musteri');
+    }
+  }, [storedCustomer, navigate]);
+
+  const [customer, setCustomer] = useState<Customer>(storedCustomer || {} as Customer);
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<Customer>(customer);
   const [activeTab, setActiveTab] = useState<'profile' | 'orders' | 'favorites' | 'addresses' | 'notifications' | 'security'>('profile');
@@ -44,6 +60,7 @@ const CustomerProfilePage: React.FC<CustomerProfilePageProps> = ({ customer, onU
   const [showAddAddress, setShowAddAddress] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [favorites, setFavorites] = useState(MOCK_FAVORITES);
+  const [isEditing, setIsEditing] = useState(false);
   
   // Address Form
   const [addressForm, setAddressForm] = useState({ label: '', type: 'home', address: '', city: '', district: '' });
@@ -70,8 +87,22 @@ const CustomerProfilePage: React.FC<CustomerProfilePageProps> = ({ customer, onU
   };
 
   const handleSave = () => {
-    onUpdate(form);
-    setEditing(false);
+    localStorage.setItem('yolmov_customer', JSON.stringify(form));
+    setCustomer(form);
+    setIsEditing(false);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('yolmov_customer');
+    navigate('/');
+  };
+
+  const handleBackHome = () => {
+    navigate('/');
+  };
+
+  const handleViewOffers = () => {
+    navigate('/musteri/teklifler');
   };
 
   const handlePasswordChange = () => {
@@ -144,17 +175,16 @@ const CustomerProfilePage: React.FC<CustomerProfilePageProps> = ({ customer, onU
                   )}
                 </div>
                 <div className="flex flex-col gap-2 mt-6 w-full">
-                  {onViewOffers && (
-                    <button 
-                      onClick={onViewOffers} 
+                  <button 
+                      onClick={() => navigate('/musteri/teklifler')} 
                       className="w-full py-3 rounded-xl bg-brand-orange text-white text-sm font-bold hover:bg-brand-lightOrange transition-colors shadow-lg"
+                      onClick={handleViewOffers}
                     >
                       Tekliflerimi Gör
                     </button>
-                  )}
                   <div className="flex gap-2">
-                    <button onClick={onBackHome} className="flex-1 py-2.5 rounded-xl bg-gray-100 text-gray-700 text-xs font-bold hover:bg-gray-200 transition-colors">Ana Sayfa</button>
-                    <button onClick={onLogout} className="flex-1 py-2.5 rounded-xl bg-red-50 text-red-600 text-xs font-bold hover:bg-red-100 transition-colors flex items-center justify-center gap-1"><LogOut size={14}/> Çıkış</button>
+                    <button onClick={handleBackHome} className="flex-1 py-2.5 rounded-xl bg-gray-100 text-gray-700 text-xs font-bold hover:bg-gray-200 transition-colors">Ana Sayfa</button>
+                    <button onClick={handleLogout} className="flex-1 py-2.5 rounded-xl bg-red-50 text-red-600 text-xs font-bold hover:bg-red-100 transition-colors flex items-center justify-center gap-1"><LogOut size={14}/> Çıkış</button>
                   </div>
                 </div>
               </div>

@@ -1,25 +1,22 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Shield, ArrowLeft } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-interface PrivacyPolicyPageProps {
-  onBack?: () => void;
-}
-
-const PrivacyPolicyPage: React.FC<PrivacyPolicyPageProps> = ({ onBack }) => {
+const PrivacyPolicyPage: React.FC = () => {
+  const navigate = useNavigate();
+  
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
       <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white py-16 px-4">
         <div className="container mx-auto max-w-4xl">
-          {onBack && (
-            <button 
-              onClick={onBack}
+          <button
+              onClick={() => navigate(-1)}
               className="inline-flex items-center gap-2 text-gray-300 hover:text-white mb-6 text-sm font-bold"
             >
               <ArrowLeft size={18}/> Geri Dön
             </button>
-          )}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}

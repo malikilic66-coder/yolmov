@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Car, 
@@ -40,12 +41,12 @@ const VEHICLE_TYPES = [
   { id: 'truck', label: 'Kamyon', icon: Truck },
 ];
 
-interface QuoteWizardProps {
-  onHome?: () => void;
-  onViewOffers?: () => void;
-}
-
-const QuoteWizard: React.FC<QuoteWizardProps> = ({ onHome, onViewOffers }) => {
+const QuoteWizard: React.FC = () => {
+  const navigate = useNavigate();
+  const customer = React.useMemo(() => {
+    const saved = localStorage.getItem('yolmov_customer');
+    return saved ? JSON.parse(saved) : null;
+  }, []);
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, boolean>>({});
@@ -904,13 +905,13 @@ const QuoteWizard: React.FC<QuoteWizardProps> = ({ onHome, onViewOffers }) => {
       
       <div className="flex flex-col sm:flex-row gap-4 justify-center max-w-md mx-auto">
         <button 
-           onClick={() => onViewOffers ? onViewOffers() : alert('Lütfen giriş yapın')}
+           onClick={() => customer ? navigate('/musteri/teklifler') : navigate('/giris/musteri')}
            className="flex-1 px-6 py-4 bg-brand-orange text-white rounded-xl font-bold hover:bg-brand-lightOrange transition-colors shadow-lg"
         >
            Tekliflerimi Gör
         </button>
         <button 
-           onClick={() => onHome ? onHome() : window.location.href = '/'}
+           onClick={() => navigate('/')}
            className="flex-1 px-6 py-4 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors"
         >
            Ana Sayfa

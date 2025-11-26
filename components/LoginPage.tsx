@@ -249,7 +249,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ userType, onNavigateToRegister, o
           {!isCustomer && (
              <div className="mt-6 text-center">
                 <p className="text-sm text-gray-500">
-                   Hesabınız yok mu? <button onClick={onNavigateToRegister} className="text-blue-600 font-bold hover:underline">Başvuru Formunu Doldurun</button>
+                   Hesabınız yok mu? <button onClick={() => navigate('/partner/kayit')} className="text-blue-600 font-bold hover:underline">Başvuru Formunu Doldurun</button>
                 </p>
              </div>
           )}

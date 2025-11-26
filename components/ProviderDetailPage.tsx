@@ -1,27 +1,40 @@
 
 import React from 'react';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { 
   ArrowLeft, Star, ShieldCheck, MapPin, Clock, 
   CreditCard, Truck, CheckCircle2, MessageSquare,
   ThumbsUp, Calendar, Navigation
 } from 'lucide-react';
 import { Provider } from '../types';
+import { PROVIDERS } from '../constants';
 import { motion } from 'framer-motion';
 
-interface ProviderDetailPageProps {
-  provider: Provider;
-  onBack: () => void;
-  onBook: () => void;
-}
-
-const ProviderDetailPage: React.FC<ProviderDetailPageProps> = ({ provider, onBack, onBook }) => {
+const ProviderDetailPage: React.FC = () => {
+  const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
+  const location = useLocation();
+  
+  // Try to get provider from location state, otherwise fetch by ID
+  const provider = location.state?.provider || PROVIDERS.find((p: Provider) => p.id === id);
+  
+  if (!provider) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600 mb-4">Hizmet sağlayıcı bulunamadı</p>
+          <button onClick={() => navigate('/liste')} className="text-brand-orange font-semibold">Listeye Dön</button>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="min-h-screen bg-[#F8FAFC] py-6 md:py-10">
       <div className="container mx-auto px-4 md:px-8 lg:px-24 xl:px-32">
         
         {/* Back Navigation */}
         <button 
-          onClick={onBack}
+          onClick={() => navigate(-1)}
           className="flex items-center gap-2 text-gray-500 hover:text-brand-orange font-medium mb-6 transition-colors"
         >
           <ArrowLeft size={20} />
@@ -239,7 +252,7 @@ const ProviderDetailPage: React.FC<ProviderDetailPageProps> = ({ provider, onBac
                    </div>
 
                    <button 
-                      onClick={onBook}
+                      onClick={() => navigate('/teklif')}
                       className="w-full py-4 bg-brand-orange text-white rounded-xl font-bold shadow-lg shadow-orange-200 hover:bg-brand-lightOrange transition-all transform hover:-translate-y-1 active:scale-95 mb-3"
                    >
                       Teklif Al

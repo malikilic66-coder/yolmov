@@ -1,16 +1,13 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Phone, Mail, MapPin } from 'lucide-react';
 
-interface FooterProps {
-  onNavigate?: (page: 'home' | 'about' | 'services' | 'faq' | 'contact' | 'career' | 'blog') => void;
-}
+const Footer: React.FC = () => {
+  const navigate = useNavigate();
 
-const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
-  const handleNavigation = (page: 'home' | 'about' | 'services' | 'faq' | 'contact' | 'career' | 'blog') => {
-    if (onNavigate) {
-      onNavigate(page);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+  const handleNavigation = (path: string) => {
+    navigate(path);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (
@@ -21,7 +18,7 @@ const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
           
           {/* Brand Column */}
           <div>
-            <div className="mb-6 cursor-pointer" onClick={() => handleNavigation('home')}>
+            <div className="mb-6 cursor-pointer" onClick={() => handleNavigation('/')}>
               <img 
                 src="https://raw.githubusercontent.com/yosoyorhan/repo2/refs/heads/main/yolmov-logo-cutter-beyaz.png" 
                 alt="Yolmov Logo" 
@@ -38,27 +35,27 @@ const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
             <h4 className="text-lg font-bold mb-6 text-white/90">Kurumsal</h4>
             <ul className="space-y-3 text-sm text-gray-400">
               <li>
-                <button onClick={() => handleNavigation('about')} className="hover:text-brand-orange transition-colors text-left">
+                <button onClick={() => handleNavigation('/hakkimizda')} className="hover:text-brand-orange transition-colors text-left">
                   Hakkımızda
                 </button>
               </li>
               <li>
-                <button onClick={() => handleNavigation('services')} className="hover:text-brand-orange transition-colors text-left">
+                <button onClick={() => handleNavigation('/hizmetler')} className="hover:text-brand-orange transition-colors text-left">
                   Hizmetler
                 </button>
               </li>
               <li>
-                <button onClick={() => handleNavigation('career')} className="hover:text-brand-orange transition-colors text-left">
+                <button onClick={() => handleNavigation('/kariyer')} className="hover:text-brand-orange transition-colors text-left">
                   Kariyer
                 </button>
               </li>
               <li>
-                <button onClick={() => handleNavigation('blog')} className="hover:text-brand-orange transition-colors text-left">
+                <button onClick={() => handleNavigation('/blog')} className="hover:text-brand-orange transition-colors text-left">
                   Blog
                 </button>
               </li>
               <li>
-                <button onClick={() => handleNavigation('contact')} className="hover:text-brand-orange transition-colors text-left">
+                <button onClick={() => handleNavigation('/iletisim')} className="hover:text-brand-orange transition-colors text-left">
                   İletişim
                 </button>
               </li>
@@ -71,7 +68,7 @@ const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
             <ul className="space-y-3 text-sm text-gray-400">
               {['Çekici Hizmeti', 'Akü Takviyesi', 'Lastik Değişimi', 'Yakıt Desteği', 'Oto Kurtarma'].map(link => (
                 <li key={link}>
-                  <button onClick={() => handleNavigation('services')} className="hover:text-brand-orange transition-colors text-left">
+                  <button onClick={() => handleNavigation('/hizmetler')} className="hover:text-brand-orange transition-colors text-left">
                     {link}
                   </button>
                 </li>
@@ -106,19 +103,13 @@ const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
           </p>
           <div className="flex space-x-6 text-xs text-gray-500">
             <button 
-              onClick={() => {
-                const event = new CustomEvent('yolmov:navigate', { detail: { page: 'privacy-policy' } });
-                window.dispatchEvent(event);
-              }}
+              onClick={() => handleNavigation('/gizlilik-politikasi')}
               className="hover:text-white transition-colors"
             >
               Gizlilik Politikası
             </button>
             <button 
-              onClick={() => {
-                const event = new CustomEvent('yolmov:navigate', { detail: { page: 'terms-of-service' } });
-                window.dispatchEvent(event);
-              }}
+              onClick={() => handleNavigation('/kullanim-kosullari')}
               className="hover:text-white transition-colors"
             >
               Kullanım Koşulları

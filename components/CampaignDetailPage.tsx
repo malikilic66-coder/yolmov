@@ -1,21 +1,59 @@
 import React from 'react';
-import { ArrowLeft, Calendar, Tag, CheckCircle2 } from 'lucide-react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { ArrowLeft, Calendar, Tag, MapPin, Clock, Gift, CheckCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-interface Campaign {
-  id: number;
+export interface Campaign {
+  id: string;
   title: string;
   description: string;
   image: string;
-  badgeText: string;
+  badgeText?: string;
+  validUntil?: string;
+  discount?: number;
+  code?: string;
 }
 
-interface CampaignDetailPageProps {
-  campaign: Campaign;
-  onBack?: () => void;
-}
+// Mock campaigns data
+const MOCK_CAMPAIGNS: Campaign[] = [
+  {
+    id: '1',
+    title: 'İlk Kullanıcılara %30 İndirim',
+    description: 'Yeni üyelere özel ilk hizmetlerinde %30 indirim fırsatı! Akü takviyesi, lastik değişimi ve daha fazlası...',
+    image: 'https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?auto=format&fit=crop&q=80&w=800',
+    badgeText: 'Yeni Üyelere Özel',
+    validUntil: '31 Aralık 2024',
+    discount: 30,
+    code: 'ILKKULLANIM30'
+  },
+  {
+    id: '2',
+    title: 'Kış Bakım Paketi',
+    description: 'Aracınızı kışa hazırlayın! Akü kontrolü + Lastik kontrolü paket fiyatına.',
+    image: 'https://images.unsplash.com/photo-1551632436-cbf8dd35adfa?auto=format&fit=crop&q=80&w=800',
+    badgeText: 'Mevsimsel Kampanya',
+    validUntil: '28 Şubat 2024',
+    discount: 25,
+    code: 'KISBAKIM25'
+  }
+];
 
-const CampaignDetailPage: React.FC<CampaignDetailPageProps> = ({ campaign, onBack }) => {
+const CampaignDetailPage: React.FC = () => {
+  const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
+  
+  const campaign = MOCK_CAMPAIGNS.find(c => c.id === id);
+  
+  if (!campaign) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600 mb-4">Kampanya bulunamadı</p>
+          <button onClick={() => navigate('/kampanyalar')} className="text-brand-orange font-semibold">Kampanyalara Dön</button>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
@@ -28,14 +66,12 @@ const CampaignDetailPage: React.FC<CampaignDetailPageProps> = ({ campaign, onBac
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent"></div>
         
         <div className="absolute inset-0 flex flex-col justify-between p-6 md:p-12">
-          {onBack && (
-            <button 
-              onClick={onBack}
+          <button 
+              onClick={() => navigate('/kampanyalar')}
               className="inline-flex items-center gap-2 text-white hover:text-brand-orange mb-6 text-sm font-bold w-fit bg-black/30 backdrop-blur-sm px-4 py-2 rounded-xl"
             >
               <ArrowLeft size={18}/> Geri Dön
             </button>
-          )}
 
           <div>
             <span className="inline-block px-4 py-2 bg-white/20 backdrop-blur-md text-white text-xs font-bold uppercase tracking-wider rounded-xl border border-white/30 shadow-sm mb-4">
@@ -63,7 +99,7 @@ const CampaignDetailPage: React.FC<CampaignDetailPageProps> = ({ campaign, onBac
 
             <section className="bg-orange-50 rounded-2xl p-6 border border-orange-100">
               <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <CheckCircle2 size={20} className="text-brand-orange" />
+                <CheckCircle size={20} className="text-brand-orange" />
                 Kampanya Avantajları
               </h3>
               <ul className="space-y-3 text-gray-700">

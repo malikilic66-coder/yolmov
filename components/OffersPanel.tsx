@@ -1,13 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Customer, Request, Offer } from '../types';
 import { seedDemoRequests, getRequestsByCustomer, getOffersForRequest, acceptOffer, rejectOffer } from '../services/mockApi';
 import { ArrowLeft, MapPin, CheckCircle2, XCircle, Clock, Handshake, FilePlus, Check, X, RefreshCcw, Eye, User, Phone, Navigation, ShieldCheck, DollarSign } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-
-interface OffersPanelProps {
-  customer: Customer;
-  onBack: () => void;
-}
 
 const statusBadge = (status: Request['status']) => {
   const base = 'text-xs px-2 py-1 rounded font-bold';
@@ -31,7 +27,29 @@ const offerStatusBadge = (status: Offer['status']) => {
   }
 };
 
-const OffersPanel: React.FC<OffersPanelProps> = ({ customer, onBack }) => {
+const OffersPanel: React.FC = () => {
+  const navigate = useNavigate();
+  
+  // Get customer from localStorage
+  const customer = useMemo(() => {
+    const stored = localStorage.getItem('yolmov_customer');
+    if (stored) {
+      try {
+        return JSON.parse(stored) as Customer;
+      } catch (e) {
+        console.error('Failed to parse customer data:', e);
+      }
+    }
+    return null;
+  }, []);
+
+  // Redirect if not logged in
+  React.useEffect(() => {
+    if (!customer) {
+      navigate('/giris/musteri');
+    }
+  }, [customer, navigate]);
+
   const [requests, setRequests] = useState<Request[]>([]);
   const [selectedRequest, setSelectedRequest] = useState<Request | null>(null);
   const [offers, setOffers] = useState<Offer[]>([]);
@@ -39,9 +57,11 @@ const OffersPanel: React.FC<OffersPanelProps> = ({ customer, onBack }) => {
   const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null);
 
   useEffect(() => {
-    seedDemoRequests(customer.id);
-    setRequests(getRequestsByCustomer(customer.id));
-  }, [customer.id]);
+    if (customer) {
+      seedDemoRequests(customer.id);
+      setRequests(getRequestsByCustomer(customer.id));
+    }
+  }, [customer]);
 
   const loadOffers = (req: Request) => {
     setSelectedRequest(req);
@@ -54,7 +74,7 @@ const OffersPanel: React.FC<OffersPanelProps> = ({ customer, onBack }) => {
 
   const handleAccept = (offerId: string) => {
     acceptOffer(offerId);
-    if (selectedRequest) {
+    if (selectedRequest && customer) {
       setOffers(getOffersForRequest(selectedRequest.id));
       setRequests(getRequestsByCustomer(customer.id));
     }
@@ -69,7 +89,7 @@ const OffersPanel: React.FC<OffersPanelProps> = ({ customer, onBack }) => {
     <div className="min-h-[calc(100vh-80px)] bg-gray-50 py-8 px-4 md:px-8">
       <div className="max-w-6xl mx-auto">
         <div className="flex items-center gap-4 mb-6">
-          <button onClick={onBack} className="inline-flex items-center gap-2 text-gray-600 hover:text-brand-orange text-sm font-bold"><ArrowLeft size={18}/> Geri</button>
+          <button onClick={() => navigate('/musteri/profil')} className="inline-flex items-center gap-2 text-gray-600 hover:text-brand-orange text-sm font-bold"><ArrowLeft size={18}/> Geri</button>
           <h1 className="text-2xl font-display font-bold text-gray-900">Talepler & Teklifler</h1>
         </div>
 
