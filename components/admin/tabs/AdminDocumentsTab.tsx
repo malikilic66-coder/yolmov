@@ -1,0 +1,430 @@
+/**
+ * Admin Documents Management Tab
+ * Tüm partnerlerin belge onay/red yönetimi
+ */
+
+import React, { useState } from 'react';
+import { Search, Eye, CheckCircle, XCircle, Download, Calendar, FileText, AlertTriangle, Filter, User } from 'lucide-react';
+import { useAdminFilter } from '../hooks/useAdminFilter';
+import StatusBadge from '../ui/StatusBadge';
+import EmptyState from '../ui/EmptyState';
+
+interface PartnerDocument {
+  id: string;
+  partnerId: string;
+  partnerName: string;
+  documentType: 'license' | 'insurance' | 'registration' | 'tax' | 'identity';
+  fileName: string;
+  fileSize: string;
+  uploadDate: string;
+  expiryDate?: string;
+  status: 'pending' | 'approved' | 'rejected';
+  rejectionReason?: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
+}
+
+// MOCK DATA - Gerçek backend entegrasyonunda API'den gelecek
+const MOCK_DOCUMENTS: PartnerDocument[] = [
+  {
+    id: 'DOC-001',
+    partnerId: 'PTR-001',
+    partnerName: 'Yılmaz Oto Kurtarma',
+    documentType: 'license',
+    fileName: 'surucu_belgesi_2024.pdf',
+    fileSize: '1.2 MB',
+    uploadDate: '2024-11-20 14:30',
+    expiryDate: '2028-05-15',
+    status: 'pending',
+  },
+  {
+    id: 'DOC-002',
+    partnerId: 'PTR-001',
+    partnerName: 'Yılmaz Oto Kurtarma',
+    documentType: 'insurance',
+    fileName: 'kasko_policesi.pdf',
+    fileSize: '800 KB',
+    uploadDate: '2024-11-19 10:15',
+    expiryDate: '2025-12-31',
+    status: 'approved',
+    reviewedBy: 'Admin User',
+    reviewedAt: '2024-11-19 11:00',
+  },
+  {
+    id: 'DOC-003',
+    partnerId: 'PTR-002',
+    partnerName: 'Hızlı Yol Yardım',
+    documentType: 'registration',
+    fileName: 'arac_ruhsati.jpg',
+    fileSize: '650 KB',
+    uploadDate: '2024-11-18 16:45',
+    status: 'rejected',
+    rejectionReason: 'Belge okunaklı değil, lütfen daha net bir görsel yükleyin',
+    reviewedBy: 'Support Admin',
+    reviewedAt: '2024-11-18 17:20',
+  },
+  {
+    id: 'DOC-004',
+    partnerId: 'PTR-003',
+    partnerName: 'Mega Çekici',
+    documentType: 'tax',
+    fileName: 'vergi_levhasi.pdf',
+    fileSize: '400 KB',
+    uploadDate: '2024-11-22 09:30',
+    status: 'pending',
+  },
+  {
+    id: 'DOC-005',
+    partnerId: 'PTR-002',
+    partnerName: 'Hızlı Yol Yardım',
+    documentType: 'identity',
+    fileName: 'kimlik_fotokopisi.jpg',
+    fileSize: '550 KB',
+    uploadDate: '2024-11-21 11:20',
+    status: 'approved',
+    reviewedBy: 'Admin User',
+    reviewedAt: '2024-11-21 12:00',
+  },
+  {
+    id: 'DOC-006',
+    partnerId: 'PTR-003',
+    partnerName: 'Mega Çekici',
+    documentType: 'insurance',
+    fileName: 'sorumluluk_sigortasi.pdf',
+    fileSize: '1.5 MB',
+    uploadDate: '2024-11-23 08:15',
+    expiryDate: '2025-11-30',
+    status: 'pending',
+  },
+];
+
+const DOCUMENT_TYPE_LABELS: Record<string, string> = {
+  license: 'Sürücü Belgesi',
+  insurance: 'Sigorta Poliçesi',
+  registration: 'Araç Ruhsatı',
+  tax: 'Vergi Levhası',
+  identity: 'Kimlik Belgesi',
+};
+
+const AdminDocumentsTab: React.FC = () => {
+  const [selectedDoc, setSelectedDoc] = useState<PartnerDocument | null>(null);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [documents, setDocuments] = useState(MOCK_DOCUMENTS);
+
+  const { filtered, searchTerm, setSearchTerm, filterType, setFilterType } = useAdminFilter<PartnerDocument>(
+    documents,
+    { searchKeys: ['partnerName', 'fileName'], statusKey: 'status' }
+  );
+
+  const stats = {
+    total: documents.length,
+    pending: documents.filter(d => d.status === 'pending').length,
+    approved: documents.filter(d => d.status === 'approved').length,
+    rejected: documents.filter(d => d.status === 'rejected').length,
+  };
+
+  const handleApprove = (doc: PartnerDocument) => {
+    setDocuments(prev => prev.map(d => 
+      d.id === doc.id 
+        ? { ...d, status: 'approved' as const, reviewedBy: 'Admin User', reviewedAt: new Date().toISOString() }
+        : d
+    ));
+    setSelectedDoc(null);
+  };
+
+  const handleReject = (doc: PartnerDocument) => {
+    setSelectedDoc(doc);
+    setShowRejectModal(true);
+  };
+
+  const submitRejection = () => {
+    if (!selectedDoc || !rejectionReason.trim()) return;
+    
+    setDocuments(prev => prev.map(d => 
+      d.id === selectedDoc.id 
+        ? { ...d, status: 'rejected' as const, rejectionReason, reviewedBy: 'Admin User', reviewedAt: new Date().toISOString() }
+        : d
+    ));
+    setShowRejectModal(false);
+    setRejectionReason('');
+    setSelectedDoc(null);
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-white rounded-xl border border-slate-200 p-4">
+          <div className="flex items-center justify-between mb-2">
+            <FileText size={20} className="text-slate-400" />
+            <span className="text-xs font-bold text-slate-500">Toplam</span>
+          </div>
+          <p className="text-2xl font-black text-slate-900">{stats.total}</p>
+        </div>
+        <div className="bg-yellow-50 rounded-xl border border-yellow-200 p-4">
+          <div className="flex items-center justify-between mb-2">
+            <AlertTriangle size={20} className="text-yellow-600" />
+            <span className="text-xs font-bold text-yellow-600">Bekliyor</span>
+          </div>
+          <p className="text-2xl font-black text-yellow-700">{stats.pending}</p>
+        </div>
+        <div className="bg-green-50 rounded-xl border border-green-200 p-4">
+          <div className="flex items-center justify-between mb-2">
+            <CheckCircle size={20} className="text-green-600" />
+            <span className="text-xs font-bold text-green-600">Onaylı</span>
+          </div>
+          <p className="text-2xl font-black text-green-700">{stats.approved}</p>
+        </div>
+        <div className="bg-red-50 rounded-xl border border-red-200 p-4">
+          <div className="flex items-center justify-between mb-2">
+            <XCircle size={20} className="text-red-600" />
+            <span className="text-xs font-bold text-red-600">Reddedilen</span>
+          </div>
+          <p className="text-2xl font-black text-red-700">{stats.rejected}</p>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="flex gap-4">
+        <div className="flex-1 relative">
+          <Search size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Partner veya dosya adı ile ara..."
+            className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        <select
+          className="px-4 py-3 bg-white border border-slate-200 rounded-xl font-medium text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none"
+          value={filterType}
+          onChange={(e) => setFilterType(e.target.value)}
+        >
+          <option value="all">Tüm Durumlar</option>
+          <option value="pending">Onay Bekliyor</option>
+          <option value="approved">Onaylı</option>
+          <option value="rejected">Reddedilen</option>
+        </select>
+      </div>
+
+      {/* Documents Table */}
+      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+        {filtered.length === 0 ? (
+          <EmptyState title="Belge Bulunamadı" description="Arama kriterinize uygun belge yok." />
+        ) : (
+          <table className="w-full">
+            <thead className="bg-slate-50 border-b border-slate-200">
+              <tr>
+                <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase">Partner</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase">Belge Tipi</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase">Dosya</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase">Yüklenme</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase">Son Geçerlilik</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase">Durum</th>
+                <th className="px-6 py-4 text-right text-xs font-bold text-slate-600 uppercase">İşlemler</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {filtered.map((doc) => (
+                <tr key={doc.id} className="hover:bg-slate-50">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      <User size={16} className="text-slate-400" />
+                      <div>
+                        <p className="font-bold text-slate-900 text-sm">{doc.partnerName}</p>
+                        <p className="text-xs text-slate-500">{doc.partnerId}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="text-sm font-medium text-slate-700">
+                      {DOCUMENT_TYPE_LABELS[doc.documentType]}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div>
+                      <p className="text-sm font-mono text-slate-900">{doc.fileName}</p>
+                      <p className="text-xs text-slate-500">{doc.fileSize}</p>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-slate-600">{doc.uploadDate}</td>
+                  <td className="px-6 py-4">
+                    {doc.expiryDate ? (
+                      <span className="text-sm text-slate-700">{doc.expiryDate}</span>
+                    ) : (
+                      <span className="text-xs text-slate-400">-</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4">
+                    <StatusBadge type="document" status={doc.status} />
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => setSelectedDoc(doc)}
+                        className="p-2 text-slate-400 hover:text-blue-600 bg-slate-50 hover:bg-blue-50 rounded-lg transition-colors"
+                        title="Görüntüle"
+                      >
+                        <Eye size={18} />
+                      </button>
+                      {doc.status === 'pending' && (
+                        <>
+                          <button
+                            onClick={() => handleApprove(doc)}
+                            className="p-2 text-green-600 hover:text-green-700 bg-green-50 hover:bg-green-100 rounded-lg transition-colors"
+                            title="Onayla"
+                          >
+                            <CheckCircle size={18} />
+                          </button>
+                          <button
+                            onClick={() => handleReject(doc)}
+                            className="p-2 text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+                            title="Reddet"
+                          >
+                            <XCircle size={18} />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* Document Detail Modal */}
+      {selectedDoc && !showRejectModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setSelectedDoc(null)}>
+          <div className="bg-white rounded-3xl p-6 max-w-2xl w-full" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-slate-900">Belge Detayları</h2>
+              <button onClick={() => setSelectedDoc(null)} className="p-2 hover:bg-slate-100 rounded-lg">
+                <XCircle size={24} className="text-slate-400" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-slate-50 rounded-xl p-4">
+                  <p className="text-xs text-slate-500 mb-1">Partner</p>
+                  <p className="font-bold text-slate-900">{selectedDoc.partnerName}</p>
+                  <p className="text-xs text-slate-500">{selectedDoc.partnerId}</p>
+                </div>
+                <div className="bg-slate-50 rounded-xl p-4">
+                  <p className="text-xs text-slate-500 mb-1">Belge Tipi</p>
+                  <p className="font-bold text-slate-900">{DOCUMENT_TYPE_LABELS[selectedDoc.documentType]}</p>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 rounded-xl p-4">
+                <p className="text-xs text-slate-500 mb-1">Dosya Bilgisi</p>
+                <p className="font-mono text-sm text-slate-900">{selectedDoc.fileName}</p>
+                <p className="text-xs text-slate-500 mt-1">{selectedDoc.fileSize}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-slate-50 rounded-xl p-4">
+                  <p className="text-xs text-slate-500 mb-1">Yüklenme Tarihi</p>
+                  <p className="font-bold text-slate-900">{selectedDoc.uploadDate}</p>
+                </div>
+                {selectedDoc.expiryDate && (
+                  <div className="bg-orange-50 rounded-xl p-4 border border-orange-200">
+                    <p className="text-xs text-orange-600 mb-1">Son Geçerlilik</p>
+                    <p className="font-bold text-orange-900">{selectedDoc.expiryDate}</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="bg-slate-50 rounded-xl p-4">
+                <p className="text-xs text-slate-500 mb-2">Durum</p>
+                <StatusBadge type="document" status={selectedDoc.status} />
+              </div>
+
+              {selectedDoc.status === 'rejected' && selectedDoc.rejectionReason && (
+                <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                  <p className="text-xs font-bold text-red-600 mb-1">Red Nedeni:</p>
+                  <p className="text-sm text-red-800">{selectedDoc.rejectionReason}</p>
+                  {selectedDoc.reviewedBy && (
+                    <p className="text-xs text-red-600 mt-2">
+                      {selectedDoc.reviewedBy} • {selectedDoc.reviewedAt}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {selectedDoc.status === 'approved' && selectedDoc.reviewedBy && (
+                <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+                  <p className="text-xs font-bold text-green-600 mb-1">Onaylayan:</p>
+                  <p className="text-sm text-green-800">{selectedDoc.reviewedBy}</p>
+                  <p className="text-xs text-green-600 mt-1">{selectedDoc.reviewedAt}</p>
+                </div>
+              )}
+
+              {selectedDoc.status === 'pending' && (
+                <div className="flex gap-3 pt-4">
+                  <button
+                    onClick={() => handleReject(selectedDoc)}
+                    className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 flex items-center justify-center gap-2"
+                  >
+                    <XCircle size={18} />
+                    Reddet
+                  </button>
+                  <button
+                    onClick={() => handleApprove(selectedDoc)}
+                    className="flex-1 py-3 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 flex items-center justify-center gap-2"
+                  >
+                    <CheckCircle size={18} />
+                    Onayla
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rejection Modal */}
+      {showRejectModal && selectedDoc && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl p-6 max-w-lg w-full">
+            <h2 className="text-2xl font-bold text-slate-900 mb-4">Belge Reddetme</h2>
+            <p className="text-sm text-slate-600 mb-4">
+              <strong>{selectedDoc.partnerName}</strong> firmasının <strong>{DOCUMENT_TYPE_LABELS[selectedDoc.documentType]}</strong> belgesini neden reddediyorsunuz?
+            </p>
+            <textarea
+              className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-500 outline-none resize-none"
+              rows={4}
+              placeholder="Red nedenini açıklayın (zorunlu)..."
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+            />
+            <div className="flex gap-3 mt-4">
+              <button
+                onClick={() => {
+                  setShowRejectModal(false);
+                  setRejectionReason('');
+                }}
+                className="flex-1 py-3 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200"
+              >
+                İptal
+              </button>
+              <button
+                onClick={submitRejection}
+                disabled={!rejectionReason.trim()}
+                className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed"
+              >
+                Reddet
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default AdminDocumentsTab;

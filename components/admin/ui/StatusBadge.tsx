@@ -1,9 +1,9 @@
 import React from 'react';
 
-export type StatusBadgeType = 'user' | 'partner' | 'request' | 'offer';
+export type StatusBadgeType = 'user' | 'partner' | 'request' | 'offer' | 'document' | 'vehicle' | 'payment' | 'objection';
 
 interface StatusBadgeProps {
-  type: StatusBadgeType;
+  type?: StatusBadgeType;
   status: string;
   className?: string;
 }
@@ -28,11 +28,34 @@ const maps: Record<StatusBadgeType, Record<string, { label: string; classes: str
     sent: { label: 'Gönderildi', classes: 'bg-blue-100 text-blue-700' },
     accepted: { label: 'Kabul', classes: 'bg-green-100 text-green-700' },
     rejected: { label: 'Red', classes: 'bg-red-100 text-red-700' }
+  },
+  document: {
+    pending: { label: 'Beklemede', classes: 'bg-yellow-100 text-yellow-700' },
+    approved: { label: 'Onaylandı', classes: 'bg-green-100 text-green-700' },
+    rejected: { label: 'Reddedildi', classes: 'bg-red-100 text-red-700' },
+    expired: { label: 'Süresi Dolmuş', classes: 'bg-orange-100 text-orange-700' }
+  },
+  vehicle: {
+    active: { label: 'Aktif', classes: 'bg-green-100 text-green-700' },
+    maintenance: { label: 'Bakımda', classes: 'bg-yellow-100 text-yellow-700' },
+    disabled: { label: 'Devre Dışı', classes: 'bg-red-100 text-red-700' },
+    pending: { label: 'Onay Bekliyor', classes: 'bg-blue-100 text-blue-700' }
+  },
+  payment: {
+    completed: { label: 'Tamamlandı', classes: 'bg-green-100 text-green-700' },
+    pending: { label: 'Beklemede', classes: 'bg-yellow-100 text-yellow-700' },
+    failed: { label: 'Başarısız', classes: 'bg-red-100 text-red-700' },
+    refunded: { label: 'İade Edildi', classes: 'bg-purple-100 text-purple-700' }
+  },
+  objection: {
+    pending: { label: 'Beklemede', classes: 'bg-orange-100 text-orange-700' },
+    approved: { label: 'Onaylandı', classes: 'bg-green-100 text-green-700' },
+    rejected: { label: 'Reddedildi', classes: 'bg-red-100 text-red-700' }
   }
 };
 
-const StatusBadge: React.FC<StatusBadgeProps> = ({ type, status, className }) => {
-  const def = maps[type][status] || { label: status, classes: 'bg-slate-100 text-slate-600' };
+const StatusBadge: React.FC<StatusBadgeProps> = ({ type = 'request', status, className }) => {
+  const def = maps[type]?.[status] || { label: status, classes: 'bg-slate-100 text-slate-600' };
   return (
     <span className={`px-3 py-1 rounded-full text-xs font-bold ${def.classes} ${className || ''}`}>{def.label}</span>
   );

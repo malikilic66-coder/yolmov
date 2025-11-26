@@ -10,6 +10,12 @@ import LoadingSkeleton from './ui/LoadingSkeleton';
 
 const AdminOffersTab = lazy(() => import('./tabs/AdminOffersTab'));
 const AdminReportsTab = lazy(() => import('./tabs/AdminReportsTab'));
+const AdminDocumentsTab = lazy(() => import('./tabs/AdminDocumentsTab'));
+const AdminFleetTab = lazy(() => import('./tabs/AdminFleetTab'));
+const AdminReviewsTab = lazy(() => import('./tabs/AdminReviewsTab'));
+const AdminFinancialTab = lazy(() => import('./tabs/AdminFinancialTab'));
+const AdminCreditsTab = lazy(() => import('./tabs/AdminCreditsTab'));
+const AdminJobHistoryTab = lazy(() => import('./tabs/AdminJobHistoryTab'));
 
 interface AdminDashboardProps { onLogout: () => void; }
 
@@ -54,7 +60,7 @@ const MOCK_OFFERS: OfferLog[] = [
 ];
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'partners' | 'requests' | 'offers' | 'reports'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'partners' | 'requests' | 'offers' | 'reports' | 'documents' | 'fleet' | 'reviews' | 'financial' | 'credits' | 'job-history'>('overview');
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const currentAdminRole: AdminRole = AdminRole.SUPER_ADMIN;
 
@@ -340,6 +346,24 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           )}
           {activeTab === 'reports' && (
             <Suspense fallback={<LoadingSkeleton rows={6} />}><AdminReportsTab /></Suspense>
+          )}
+          {activeTab === 'documents' && (
+            <Suspense fallback={<LoadingSkeleton rows={6} />}><AdminDocumentsTab /></Suspense>
+          )}
+          {activeTab === 'fleet' && (
+            <Suspense fallback={<LoadingSkeleton rows={6} />}><AdminFleetTab /></Suspense>
+          )}
+          {activeTab === 'reviews' && (
+            <Suspense fallback={<LoadingSkeleton rows={6} />}><AdminReviewsTab /></Suspense>
+          )}
+          {activeTab === 'financial' && (
+            <Suspense fallback={<LoadingSkeleton rows={6} />}><AdminFinancialTab /></Suspense>
+          )}
+          {activeTab === 'credits' && (
+            <Suspense fallback={<LoadingSkeleton rows={6} />}><AdminCreditsTab /></Suspense>
+          )}
+          {activeTab === 'job-history' && (
+            <Suspense fallback={<LoadingSkeleton rows={6} />}><AdminJobHistoryTab /></Suspense>
           )}
         </main>
       </div>
