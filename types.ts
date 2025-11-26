@@ -60,6 +60,8 @@ export interface JobRequest {
   vehicleInfo: string;
   urgency: 'high' | 'normal';
   expiresIn?: number; // New: Seconds left to accept
+  estimatedPrice?: number; // Estimated price for customer
+  notes?: string; // Additional notes
 }
 
 // Customer (B2C) user profile information

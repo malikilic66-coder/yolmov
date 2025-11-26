@@ -52,8 +52,8 @@ const CREDIT_PACKAGES = [
 
 // MOCK FLEET DATA
 const MOCK_FLEET = [
-  { id: 1, plate: '34 AB 1234', model: '2020 Ford F-Max', type: 'Kayar Kasa', driver: 'Mehmet Y.', status: 'active', image: 'https://images.unsplash.com/photo-1605218427360-6982bc998200?auto=format&fit=crop&q=80&w=300' },
-  { id: 2, plate: '34 XY 9988', model: '2018 Isuzu NPR', type: 'Ahtapot Vinç', driver: 'Ali K.', status: 'maintenance', image: 'https://images.unsplash.com/photo-1586015604658-650561417675?auto=format&fit=crop&q=80&w=300' },
+  { id: 1, plate: '34 AB 1234', name: 'Ford F-Max Çekici', model: '2020 Ford F-Max', type: 'Kayar Kasa', driver: 'Mehmet Y.', status: 'active', image: 'https://images.unsplash.com/photo-1605218427360-6982bc998200?auto=format&fit=crop&q=80&w=300' },
+  { id: 2, plate: '34 XY 9988', name: 'Isuzu Ahtapot', model: '2018 Isuzu NPR', type: 'Ahtapot Vinç', driver: 'Ali K.', status: 'maintenance', image: 'https://images.unsplash.com/photo-1586015604658-650561417675?auto=format&fit=crop&q=80&w=300' },
 ];
 
 // MOCK SUPPORT TICKETS
@@ -64,7 +64,7 @@ const MOCK_TICKETS = [
 
 // INITIAL MOCK ROUTES
 const INITIAL_ROUTES = [
-  { id: 1, origin: 'İstanbul', destinations: ['Kocaeli (Gebze)', 'Sakarya', 'Bursa'], date: '2023-11-24', time: '14:00', vehicle: '34 AB 1234', matches: 3 },
+  { id: 1, origin: 'İstanbul', destinations: ['Kocaeli (Gebze)', 'Sakarya', 'Bursa'], date: '2023-11-24', time: '14:00', vehicle: '34 AB 1234', matches: 3, type: 'intercity' as 'intercity' | 'intracity' },
 ];
 
 const POSITIVE_RATING_TAGS = [
@@ -234,7 +234,7 @@ const PartnerDashboard: React.FC<PartnerDashboardProps> = ({ onLogout }) => {
   const [showAddCreditModal, setShowAddCreditModal] = useState(false);
 
   // Settings State
-  const [settingsSubTab, setSettingsSubTab] = useState<'profile' | 'services' | 'documents' | 'security'>('profile');
+  const [settingsSubTab, setSettingsSubTab] = useState<'profile' | 'services' | 'documents' | 'security' | 'notifications' | 'company' | 'vehicles' | 'contact'>('profile');
   const [companyLogo, setCompanyLogo] = useState<File | null>(null);
   const [profilePhoto, setProfilePhoto] = useState<File | null>(null);
   const [isCompressingLogo, setIsCompressingLogo] = useState(false);
@@ -750,7 +750,8 @@ const PartnerDashboard: React.FC<PartnerDashboardProps> = ({ onLogout }) => {
             date: routeDate,
             time: routeTime,
             vehicle: routeVehicle,
-            matches: Math.floor(Math.random() * 5) // Mock matching jobs
+            matches: Math.floor(Math.random() * 5), // Mock matching jobs
+            type: 'intercity' as 'intercity' | 'intracity'
         };
         setActiveRoutes([newRoute, ...activeRoutes]);
         alert("Yeni rota oluşturuldu.");
