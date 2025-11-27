@@ -8,7 +8,8 @@ import { Search, Eye, CheckCircle, XCircle, Download, Calendar, FileText, AlertT
 import { useAdminFilter } from '../hooks/useAdminFilter';
 import StatusBadge from '../ui/StatusBadge';
 import EmptyState from '../ui/EmptyState';
-import { getAllDocuments, updateDocumentStatus, type PartnerDocument } from '../../../services/mockApi';
+import { getAllDocuments, updateDocumentStatus } from '../../../services/mockApi';
+import { PartnerDocument } from '../../../types';
 
 const DOCUMENT_TYPE_LABELS: Record<string, string> = {
   license: 'Sürücü Belgesi',

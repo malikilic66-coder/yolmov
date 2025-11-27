@@ -1,6 +1,10 @@
 
 import { LucideIcon } from 'lucide-react';
 
+// ============================================
+// UI & NAVIGATION TYPES
+// ============================================
+
 export interface NavItem {
   label: string;
   href: string;
@@ -48,6 +52,10 @@ export interface Provider {
   image: string;
 }
 
+// ============================================
+// PARTNER (B2B) TYPES
+// ============================================
+
 export interface JobRequest {
   id: string;
   serviceType: string;
@@ -64,7 +72,10 @@ export interface JobRequest {
   notes?: string; // Additional notes
 }
 
-// Customer (B2C) user profile information
+// ============================================
+// CUSTOMER (B2C) TYPES
+// ============================================
+
 export interface Customer {
   id: string;
   firstName: string;
@@ -77,10 +88,11 @@ export interface Customer {
   createdAt?: string;
 }
 
-// B2C Request (Talep) yapısı
+// B2C Request (Talep) yapısı - TEK KAYNAK
 export interface Request {
   id: string;
   customerId: string;
+  customerName?: string; // Admin görüntülemesi için
   serviceType: string; // cekici | aku | lastik | yakit | yardim
   description: string;
   fromLocation: string;
@@ -88,13 +100,15 @@ export interface Request {
   vehicleInfo?: string;
   status: 'open' | 'matched' | 'completed' | 'cancelled';
   createdAt: string;
+  amount?: number; // Tamamlanan işler için tutar
 }
 
 // B2B Offer (Teklif) yapısı
 export interface Offer {
   id: string;
   requestId: string;
-  partnerId: string; // ileride gerçek partner id
+  partnerId: string;
+  partnerName?: string;
   price: number;
   etaMinutes: number;
   message?: string;
@@ -102,7 +116,10 @@ export interface Offer {
   createdAt: string;
 }
 
-// Admin User Roles
+// ============================================
+// ADMIN TYPES
+// ============================================
+
 export enum AdminRole {
   SUPER_ADMIN = 'super_admin',
   SUPPORT = 'support',
@@ -110,7 +127,6 @@ export enum AdminRole {
   OPERATIONS = 'operations',
 }
 
-// Admin User
 export interface AdminUser {
   id: string;
   email: string;
@@ -120,7 +136,6 @@ export interface AdminUser {
   createdAt: string;
 }
 
-// System Log Entry
 export interface SystemLog {
   id: string;
   adminId: string;
@@ -130,4 +145,242 @@ export interface SystemLog {
   entityId: string;
   details: string;
   timestamp: string;
+}
+
+// Admin tarafından görüntülenen müşteri talepleri (Request'ten türetilir)
+export interface CustomerRequestLog {
+  id: string;
+  customerId: string;
+  customerName: string;
+  serviceType: string;
+  location: string;
+  status: 'open' | 'matched' | 'completed' | 'cancelled';
+  createdAt: string;
+  amount?: number;
+  description?: string;
+  vehicleInfo?: string;
+  toLocation?: string;
+}
+
+// ============================================
+// PARTNER REQUEST TYPES (B2B Admin İşlemleri)
+// ============================================
+
+export interface PartnerLeadRequest {
+  id: string;
+  partnerId: string;
+  partnerName: string;
+  requestType: 'lead_purchase';
+  serviceArea: string;
+  serviceType: string;
+  creditCost: number;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: string;
+  resolvedAt?: string;
+  resolvedBy?: string;
+  adminNotes?: string;
+  customerInfo?: {
+    name: string;
+    phone: string;
+    location: string;
+  };
+}
+
+export interface ServiceAreaRequest {
+  id: string;
+  partnerId: string;
+  partnerName: string;
+  requestType: 'area_expansion';
+  currentAreas: string[];
+  requestedAreas: string[];
+  reason: string;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: string;
+  resolvedAt?: string;
+  resolvedBy?: string;
+  adminNotes?: string;
+}
+
+export interface PartnerSupportRequest {
+  id: string;
+  partnerId: string;
+  partnerName: string;
+  requestType: 'support' | 'billing' | 'technical' | 'feature';
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  subject: string;
+  description: string;
+  attachments?: string[];
+  status: 'open' | 'in_progress' | 'resolved' | 'closed';
+  createdAt: string;
+  updatedAt: string;
+  assignedTo?: string;
+  resolution?: string;
+}
+
+// ============================================
+// DOCUMENT & REVIEW TYPES
+// ============================================
+
+export interface PartnerDocument {
+  id: string;
+  partnerId: string;
+  partnerName: string;
+  type: 'license' | 'insurance' | 'registration' | 'tax' | 'identity';
+  fileName: string;
+  fileSize: string;
+  status: 'pending' | 'approved' | 'rejected';
+  uploadDate: string;
+  expiryDate?: string;
+  rejectionReason?: string;
+  fileData?: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
+}
+
+export interface PartnerReview {
+  id: string;
+  jobId: string;
+  partnerId: string;
+  partnerName: string;
+  customerId: string;
+  customerName: string;
+  service: string;
+  rating: number;
+  comment: string;
+  tags: string[];
+  date: string;
+  objection?: {
+    id: string;
+    reason: string;
+    status: 'pending' | 'approved' | 'rejected';
+    createdAt: string;
+  };
+}
+
+export interface ReviewObjection {
+  id: string;
+  reviewId: string;
+  partnerId: string;
+  partnerName: string;
+  reason: string;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: string;
+  resolvedAt?: string;
+  resolvedBy?: string;
+  adminNotes?: string;
+}
+
+// ============================================
+// SUPPORT & TICKET TYPES
+// ============================================
+
+export interface SupportTicket {
+  id: string;
+  partnerId: string;
+  partnerName: string;
+  category: 'general' | 'technical' | 'billing' | 'account' | 'feature';
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  subject: string;
+  description: string;
+  status: 'open' | 'in_progress' | 'resolved' | 'closed';
+  createdAt: string;
+  updatedAt: string;
+  assignedTo?: string;
+  resolution?: string;
+  attachments?: string[];
+}
+
+// ============================================
+// VEHICLE & FLEET TYPES
+// ============================================
+
+export interface PartnerVehicle {
+  id: string;
+  partnerId: string;
+  partnerName: string;
+  plate: string;
+  model: string;
+  type: string;
+  driver: string;
+  status: 'active' | 'maintenance' | 'disabled';
+  registrationDate: string;
+  lastService?: string;
+  totalJobs: number;
+  totalEarnings: number;
+  image?: string;
+}
+
+// ============================================
+// CREDIT & FINANCIAL TYPES
+// ============================================
+
+export interface PartnerCredit {
+  partnerId: string;
+  partnerName: string;
+  balance: number;
+  totalPurchased: number;
+  totalUsed: number;
+  lastTransaction: string;
+}
+
+export interface CreditTransaction {
+  id: string;
+  partnerId: string;
+  partnerName: string;
+  type: 'purchase' | 'usage' | 'adjustment' | 'refund';
+  amount: number;
+  balanceBefore: number;
+  balanceAfter: number;
+  description: string;
+  date: string;
+  requestId?: string;
+  adminUser?: string;
+}
+
+// ============================================
+// ROUTE & LOGISTICS TYPES
+// ============================================
+
+export interface EmptyTruckRoute {
+  id: string;
+  partnerId: string;
+  partnerName: string;
+  fromCity: string;
+  toCity: string;
+  departureDate: string;
+  vehicleType: string;
+  vehiclePlate: string;
+  availableCapacity: string;
+  pricePerKm?: number;
+  notes?: string;
+  status: 'active' | 'completed' | 'cancelled';
+  createdAt: string;
+}
+
+// ============================================
+// JOB & HISTORY TYPES
+// ============================================
+
+export interface CompletedJob {
+  id: string;
+  partnerId: string;
+  partnerName: string;
+  customerId: string;
+  customerName: string;
+  customerPhone: string;
+  serviceType: string;
+  startLocation: string;
+  endLocation?: string;
+  distance?: number;
+  startTime: string;
+  completionTime: string;
+  duration: number;
+  totalAmount: number;
+  commission: number;
+  partnerEarning: number;
+  paymentMethod: 'kredi_karti' | 'nakit' | 'havale';
+  rating?: number;
+  vehicleType: string;
+  vehiclePlate: string;
+  status: 'completed' | 'cancelled' | 'refunded';
 }

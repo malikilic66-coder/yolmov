@@ -35,7 +35,8 @@ import {
   createRoute,
   deleteRoute,
   getJobsByPartner,
-  initializeMockData
+  initializeMockData,
+  getOpenRequestsForPartner
 } from '../services/mockApi';
 import { motion, AnimatePresence } from 'framer-motion';
 import PartnerOfferHistory from './PartnerOfferHistory';
@@ -190,6 +191,11 @@ const MOCK_REVIEWS = [
 
 const PartnerDashboard: React.FC = () => {
   const navigate = useNavigate();
+  
+  // Current partner info (TODO: Get from session/auth)
+  const CURRENT_PARTNER_ID = 'PTR-001';
+  const CURRENT_PARTNER_NAME = 'Demo Partner';
+  
   const [isOnline, setIsOnline] = useState(true);
   const [activeTab, setActiveTab] = useState('home');
   const [requests, setRequests] = useState<JobRequest[]>(MOCK_PARTNER_REQUESTS);
@@ -349,8 +355,8 @@ const PartnerDashboard: React.FC = () => {
         
         // Mock API ile kaydet
         uploadDocument({
-          partnerId: currentPartner?.id || 'P001',
-          partnerName: currentPartner?.name || 'Partner',
+          partnerId: CURRENT_PARTNER_ID,
+          partnerName: CURRENT_PARTNER_NAME,
           type: docTypeMap[selectedDocType] || 'registration',
           fileName: finalFile.name,
           fileSize: `${(finalFile.size / 1024 / 1024).toFixed(2)} MB`,
@@ -448,9 +454,9 @@ const PartnerDashboard: React.FC = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-   // Load demo customer open requests
+   // Load all open customer requests for partner to see (from mockApi)
    useEffect(() => {
-      const reqs = getRequestsByCustomer(DEMO_CUSTOMER_ID).filter(r => r.status === 'open');
+      const reqs = getOpenRequestsForPartner();
       setCustomerRequests(reqs);
    }, []);
 
@@ -3030,11 +3036,12 @@ const PartnerDashboard: React.FC = () => {
                     }
                     // Mock API ile destek talebi oluştur
                     createSupportTicket({
-                      partnerId: currentPartner?.id || 'P001',
-                      partnerName: currentPartner?.name || 'Partner',
-                      category: ticketCategory as 'technical' | 'payment' | 'general' | 'complaint',
+                      partnerId: CURRENT_PARTNER_ID,
+                      partnerName: CURRENT_PARTNER_NAME,
+                      category: ticketCategory as 'technical' | 'account' | 'general' | 'billing' | 'feature',
                       subject: ticketSubject,
-                      description: ticketDescription
+                      description: ticketDescription,
+                      priority: 'medium'
                     });
                     setShowNewTicketPage(false);
                     setTicketSubject('');

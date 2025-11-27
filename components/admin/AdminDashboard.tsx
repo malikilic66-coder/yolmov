@@ -5,11 +5,12 @@ import AdminSidebar from './AdminSidebar';
 import AdminHeader from './AdminHeader';
 import RequestDetailModal from './modals/RequestDetailModal';
 import VehicleDetailModal from './modals/VehicleDetailModal';
-import { AdminRole } from '../../types';
+import { AdminRole, CustomerRequestLog } from '../../types';
 import { useAdminFilter } from './hooks/useAdminFilter';
 import StatusBadge from './ui/StatusBadge';
 import EmptyState from './ui/EmptyState';
 import LoadingSkeleton from './ui/LoadingSkeleton';
+import { getCustomerRequestsForAdmin, initializeMockData } from '../../services/mockApi';
 
 const AdminOffersTab = lazy(() => import('./tabs/AdminOffersTab'));
 const AdminReportsTab = lazy(() => import('./tabs/AdminReportsTab'));
@@ -33,12 +34,6 @@ interface User {
 interface Partner {
   id: string; name: string; email: string; phone: string; rating: number;
   completedJobs: number; credits: number; status: 'active' | 'pending' | 'suspended';
-}
-// Müşteri teklif talepleri (B2C) - ayrı sekmede
-interface CustomerRequestLog {
-  id: string; customerId: string; customerName: string; serviceType: string;
-  location: string;
-  status: 'open' | 'matched' | 'completed' | 'cancelled'; createdAt: string; amount?: number;
 }
 
 // Partner lead satın alma talebi (B2B)
@@ -110,12 +105,6 @@ const MOCK_PARTNERS: Partner[] = [
   { id: 'PTR-001', name: 'Yılmaz Oto Kurtarma', email: 'yilmaz@partner.com', phone: '0532 XXX XX 01', rating: 4.9, completedJobs: 128, credits: 25, status: 'active' },
   { id: 'PTR-002', name: 'Hızlı Yol Yardım', email: 'hizli@partner.com', phone: '0533 XXX XX 02', rating: 4.7, completedJobs: 203, credits: 50, status: 'active' },
   { id: 'PTR-003', name: 'Mega Çekici', email: 'mega@partner.com', phone: '0534 XXX XX 03', rating: 4.5, completedJobs: 89, credits: 10, status: 'pending' },
-];
-// Müşteri teklif talepleri (ayrı sekmede gösterilecek)
-const MOCK_CUSTOMER_REQUESTS: CustomerRequestLog[] = [
-  { id: 'CREQ-001', customerId: 'USR-001', customerName: 'Ahmet Yılmaz', serviceType: 'cekici', location: 'Kadıköy, İstanbul', status: 'completed', createdAt: '2024-11-22 14:30', amount: 850 },
-  { id: 'CREQ-002', customerId: 'USR-002', customerName: 'Selin Kaya', serviceType: 'aku', location: 'Beşiktaş, İstanbul', status: 'matched', createdAt: '2024-11-23 09:15', amount: 400 },
-  { id: 'CREQ-003', customerId: 'USR-001', customerName: 'Ahmet Yılmaz', serviceType: 'lastik', location: 'Üsküdar, İstanbul', status: 'open', createdAt: '2024-11-24 11:00' },
 ];
 
 // Partner lead satın alma talepleri
@@ -293,6 +282,27 @@ const AdminDashboard: React.FC = () => {
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [showAddUserModal, setShowAddUserModal] = useState(false);
   const currentAdminRole: AdminRole = AdminRole.SUPER_ADMIN;
+  
+  // mockApi'den müşteri taleplerini çek
+  const [customerRequests, setCustomerRequests] = useState<CustomerRequestLog[]>([]);
+  
+  // Component mount olduğunda ve tab değiştiğinde verileri yükle
+  useEffect(() => {
+    initializeMockData();
+    loadCustomerRequests();
+  }, []);
+  
+  // Tab değiştiğinde verileri yenile
+  useEffect(() => {
+    if (activeTab === 'overview' || activeTab === 'customer-requests') {
+      loadCustomerRequests();
+    }
+  }, [activeTab]);
+  
+  const loadCustomerRequests = () => {
+    const requests = getCustomerRequestsForAdmin();
+    setCustomerRequests(requests);
+  };
 
   // URL'ye göre aktif tab'ı ayarla
   useEffect(() => {
@@ -377,10 +387,10 @@ const AdminDashboard: React.FC = () => {
     pendingLeadRequests: MOCK_LEAD_REQUESTS.filter(r => r.status === 'pending').length,
     pendingAreaRequests: MOCK_AREA_REQUESTS.filter(r => r.status === 'pending').length,
     openSupportRequests: MOCK_SUPPORT_REQUESTS.filter(r => r.status === 'open' || r.status === 'in_progress').length,
-    // Müşteri talep istatistikleri (ayrı sekme için)
-    activeCustomerRequests: MOCK_CUSTOMER_REQUESTS.filter(r => r.status === 'open').length,
-    completedCustomerRequests: MOCK_CUSTOMER_REQUESTS.filter(r => r.status === 'completed').length,
-    totalRevenue: MOCK_CUSTOMER_REQUESTS.filter(r => r.amount).reduce((sum, r) => sum + (r.amount || 0), 0),
+    // Müşteri talep istatistikleri - mockApi'den dinamik veri
+    activeCustomerRequests: customerRequests.filter(r => r.status === 'open').length,
+    completedCustomerRequests: customerRequests.filter(r => r.status === 'completed').length,
+    totalRevenue: customerRequests.filter(r => r.amount).reduce((sum, r) => sum + (r.amount || 0), 0),
     b2cUsers: MOCK_USERS.filter(u => u.type === 'customer').length,
     b2bUsers: MOCK_USERS.filter(u => u.type === 'partner').length,
   };
@@ -452,7 +462,7 @@ const AdminDashboard: React.FC = () => {
               <div className="bg-white rounded-2xl border border-slate-200 p-6" role="region" aria-label="Son Aktiviteler">
                 <h3 className="text-lg font-bold text-slate-900 mb-4">Son Müşteri Talepleri</h3>
                 <div className="space-y-3">
-                  {MOCK_CUSTOMER_REQUESTS.slice(0,5).map((req: CustomerRequestLog) => (
+                  {customerRequests.slice(0,5).map((req: CustomerRequestLog) => (
                     <div 
                       key={req.id} 
                       className="flex items-center justify-between p-4 bg-slate-50 rounded-xl hover:bg-slate-100 cursor-pointer transition-colors"
@@ -692,7 +702,7 @@ const AdminDashboard: React.FC = () => {
                 />
               ) : (
                 <Suspense fallback={<LoadingSkeleton rows={6} />}>
-                  <AdminCustomerRequestsTab requests={MOCK_CUSTOMER_REQUESTS} />
+                  <AdminCustomerRequestsTab requests={customerRequests} />
                 </Suspense>
               )}
             </div>
@@ -1652,7 +1662,8 @@ const CustomerRequestDetailPanel: React.FC<CustomerRequestDetailPanelProps> = ({
   const [requestState, setRequestState] = React.useState<CustomerRequestLog | null>(null);
 
   React.useEffect(() => {
-    const request = MOCK_CUSTOMER_REQUESTS.find(r => r.id === requestId);
+    const allRequests = getCustomerRequestsForAdmin();
+    const request = allRequests.find(r => r.id === requestId);
     setRequestState(request || null);
   }, [requestId]);
 

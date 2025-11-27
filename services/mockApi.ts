@@ -1,152 +1,17 @@
-import { Request, Offer } from '../types';
-
-// ============================================
-// INTERFACES - Veri Yapıları
-// ============================================
-
-export interface PartnerDocument {
-  id: string;
-  partnerId: string;
-  partnerName: string;
-  type: 'license' | 'insurance' | 'registration' | 'tax' | 'identity';
-  fileName: string;
-  fileSize: string;
-  status: 'pending' | 'approved' | 'rejected';
-  uploadDate: string;
-  expiryDate?: string;
-  rejectionReason?: string;
-  fileData?: string; // base64 compressed image
-  reviewedBy?: string;
-  reviewedAt?: string;
-}
-
-export interface ReviewObjection {
-  id: string;
-  reviewId: string;
-  partnerId: string;
-  partnerName: string;
-  reason: string;
-  status: 'pending' | 'approved' | 'rejected';
-  createdAt: string;
-  resolvedAt?: string;
-  resolvedBy?: string;
-  adminNotes?: string;
-}
-
-export interface SupportTicket {
-  id: string;
-  partnerId: string;
-  partnerName: string;
-  category: 'general' | 'technical' | 'billing' | 'account' | 'feature';
-  priority: 'low' | 'medium' | 'high' | 'urgent';
-  subject: string;
-  description: string;
-  status: 'open' | 'in_progress' | 'resolved' | 'closed';
-  createdAt: string;
-  updatedAt: string;
-  assignedTo?: string;
-  resolution?: string;
-  attachments?: string[];
-}
-
-export interface PartnerVehicle {
-  id: string;
-  partnerId: string;
-  partnerName: string;
-  plate: string;
-  model: string;
-  type: string;
-  driver: string;
-  status: 'active' | 'maintenance' | 'disabled';
-  registrationDate: string;
-  lastService?: string;
-  totalJobs: number;
-  totalEarnings: number;
-  image?: string;
-}
-
-export interface CreditTransaction {
-  id: string;
-  partnerId: string;
-  partnerName: string;
-  type: 'purchase' | 'usage' | 'adjustment' | 'refund';
-  amount: number;
-  balanceBefore: number;
-  balanceAfter: number;
-  description: string;
-  date: string;
-  requestId?: string;
-  adminUser?: string;
-}
-
-export interface PartnerCredit {
-  partnerId: string;
-  partnerName: string;
-  balance: number;
-  totalPurchased: number;
-  totalUsed: number;
-  lastTransaction: string;
-}
-
-export interface EmptyTruckRoute {
-  id: string;
-  partnerId: string;
-  partnerName: string;
-  fromCity: string;
-  toCity: string;
-  departureDate: string;
-  vehicleType: string;
-  vehiclePlate: string;
-  availableCapacity: string;
-  pricePerKm?: number;
-  notes?: string;
-  status: 'active' | 'completed' | 'cancelled';
-  createdAt: string;
-}
-
-export interface PartnerReview {
-  id: string;
-  jobId: string;
-  partnerId: string;
-  partnerName: string;
-  customerId: string;
-  customerName: string;
-  service: string;
-  rating: number;
-  comment: string;
-  tags: string[];
-  date: string;
-  objection?: {
-    id: string;
-    reason: string;
-    status: 'pending' | 'approved' | 'rejected';
-    createdAt: string;
-  };
-}
-
-export interface CompletedJob {
-  id: string;
-  partnerId: string;
-  partnerName: string;
-  customerId: string;
-  customerName: string;
-  customerPhone: string;
-  serviceType: string;
-  startLocation: string;
-  endLocation?: string;
-  distance?: number;
-  startTime: string;
-  completionTime: string;
-  duration: number;
-  totalAmount: number;
-  commission: number;
-  partnerEarning: number;
-  paymentMethod: 'kredi_karti' | 'nakit' | 'havale';
-  rating?: number;
-  vehicleType: string;
-  vehiclePlate: string;
-  status: 'completed' | 'cancelled' | 'refunded';
-}
+import { 
+  Request, 
+  Offer, 
+  CustomerRequestLog,
+  PartnerDocument,
+  ReviewObjection,
+  SupportTicket,
+  PartnerVehicle,
+  CreditTransaction,
+  PartnerCredit,
+  EmptyTruckRoute,
+  PartnerReview,
+  CompletedJob
+} from '../types';
 
 // ============================================
 // LOCAL STORAGE KEYS
@@ -643,6 +508,91 @@ export function getAllRequests(): Request[] {
 
 export function getAllOffers(): Offer[] {
   return load<Offer>(LS_KEYS.offers);
+}
+
+// ============================================
+// ADMIN SPECIFIC FUNCTIONS
+// ============================================
+
+/**
+ * Request verilerini Admin'in beklediği CustomerRequestLog formatına dönüştürür
+ * Bu fonksiyon B2C tarafından oluşturulan talepleri Admin panelinde göstermek için kullanılır
+ */
+export function getCustomerRequestsForAdmin(): CustomerRequestLog[] {
+  const requests = load<Request>(LS_KEYS.requests);
+  const jobs = load<CompletedJob>(LS_KEYS.jobs);
+  
+  return requests.map(req => {
+    // Tamamlanan iş varsa amount'u al
+    const completedJob = jobs.find(j => j.customerId === req.customerId && j.serviceType.toLowerCase().includes(req.serviceType));
+    
+    // Müşteri adını çıkar (customerId'den veya description'dan)
+    let customerName = 'Misafir Müşteri';
+    
+    // localStorage'dan customer bilgisi çekmeye çalış
+    try {
+      const customerData = localStorage.getItem('yolmov_customer');
+      if (customerData) {
+        const customer = JSON.parse(customerData);
+        if (customer.id === req.customerId) {
+          customerName = `${customer.firstName || ''} ${customer.lastName || ''}`.trim() || 'Misafir Müşteri';
+        }
+      }
+    } catch (e) {
+      // ignore parse errors
+    }
+    
+    // customerId prefix'inden isim tahmin et
+    if (req.customerId.startsWith('USR-')) {
+      const userNames: Record<string, string> = {
+        'USR-001': 'Ahmet Yılmaz',
+        'USR-002': 'Mehmet Kaya',
+        'USR-003': 'Selin Kaya',
+        'USR-004': 'Burak Yıldırım',
+        'USR-005': 'Zeynep Aydın',
+      };
+      customerName = userNames[req.customerId] || customerName;
+    }
+    
+    return {
+      id: req.id,
+      customerId: req.customerId,
+      customerName: req.customerName || customerName,
+      serviceType: req.serviceType,
+      location: req.fromLocation,
+      status: req.status,
+      createdAt: formatDateForAdmin(req.createdAt),
+      amount: completedJob?.totalAmount || req.amount,
+      description: req.description,
+      vehicleInfo: req.vehicleInfo,
+      toLocation: req.toLocation
+    };
+  });
+}
+
+/**
+ * Partner için açık talepleri listeler (iş fırsatları)
+ */
+export function getOpenRequestsForPartner(): Request[] {
+  const requests = load<Request>(LS_KEYS.requests);
+  return requests.filter(r => r.status === 'open');
+}
+
+/**
+ * Tarih formatını Admin paneli için uygun hale getirir
+ */
+function formatDateForAdmin(isoDate: string): string {
+  try {
+    const date = new Date(isoDate);
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear();
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    return `${year}-${month}-${day} ${hours}:${minutes}`;
+  } catch {
+    return isoDate;
+  }
 }
 
 // ============================================
