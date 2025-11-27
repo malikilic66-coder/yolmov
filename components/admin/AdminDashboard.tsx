@@ -7,6 +7,7 @@ import UserDetailModal from './modals/UserDetailModal';
 import PartnerDetailModal from './modals/PartnerDetailModal';
 import RequestDetailModal from './modals/RequestDetailModal';
 import OfferDetailModal from './modals/OfferDetailModal';
+import VehicleDetailModal from './modals/VehicleDetailModal';
 import { AdminRole } from '../../types';
 import { useAdminFilter } from './hooks/useAdminFilter';
 import StatusBadge from './ui/StatusBadge';
@@ -21,6 +22,8 @@ const AdminReviewsTab = lazy(() => import('./tabs/AdminReviewsTab'));
 const AdminFinancialTab = lazy(() => import('./tabs/AdminFinancialTab'));
 const AdminCreditsTab = lazy(() => import('./tabs/AdminCreditsTab'));
 const AdminJobHistoryTab = lazy(() => import('./tabs/AdminJobHistoryTab'));
+
+import type { Vehicle } from './tabs/AdminFleetTab';
 
 interface User {
   id: string; name: string; email: string;
@@ -72,6 +75,7 @@ const AdminDashboard: React.FC = () => {
   const [selectedPartner, setSelectedPartner] = useState<Partner | null>(null);
   const [selectedRequest, setSelectedRequest] = useState<RequestLog | null>(null);
   const [selectedOffer, setSelectedOffer] = useState<OfferLog | null>(null);
+  const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const currentAdminRole: AdminRole = AdminRole.SUPER_ADMIN;
 
   // URL'ye göre aktif tab'ı ayarla
@@ -449,7 +453,7 @@ const AdminDashboard: React.FC = () => {
             <Suspense fallback={<LoadingSkeleton rows={6} />}><AdminDocumentsTab /></Suspense>
           )}
           {activeTab === 'fleet' && (
-            <Suspense fallback={<LoadingSkeleton rows={6} />}><AdminFleetTab /></Suspense>
+            <Suspense fallback={<LoadingSkeleton rows={6} />}><AdminFleetTab onViewVehicle={setSelectedVehicle} /></Suspense>
           )}
           {activeTab === 'reviews' && (
             <Suspense fallback={<LoadingSkeleton rows={6} />}><AdminReviewsTab /></Suspense>
@@ -471,6 +475,7 @@ const AdminDashboard: React.FC = () => {
       <PartnerDetailModal partner={selectedPartner} onClose={() => setSelectedPartner(null)} />
       <RequestDetailModal request={selectedRequest} onClose={() => setSelectedRequest(null)} />
       <OfferDetailModal offer={selectedOffer} onClose={() => setSelectedOffer(null)} />
+      <VehicleDetailModal vehicle={selectedVehicle} onClose={() => setSelectedVehicle(null)} />
     </div>
   );
 };

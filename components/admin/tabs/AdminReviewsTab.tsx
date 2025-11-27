@@ -265,6 +265,24 @@ const AdminReviewsTab: React.FC = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
+        <select
+          className="px-4 py-3 bg-white border border-slate-200 rounded-xl font-medium text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none"
+          onChange={(e) => setSearchTerm(e.target.value === 'all' ? '' : e.target.value)}
+        >
+          <option value="all">Tüm Partnerler</option>
+          {[...new Set(MOCK_REVIEWS.map(r => r.partnerName))].sort().map(name => (
+            <option key={name} value={name}>{name}</option>
+          ))}
+        </select>
+        <select
+          className="px-4 py-3 bg-white border border-slate-200 rounded-xl font-medium text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none"
+          onChange={(e) => setSearchTerm(e.target.value === 'all' ? '' : e.target.value)}
+        >
+          <option value="all">Tüm Hizmetler</option>
+          {[...new Set(MOCK_REVIEWS.map(r => r.service))].sort().map(service => (
+            <option key={service} value={service}>{service}</option>
+          ))}
+        </select>
       </div>
 
       {/* Reviews List - Tablo Formatı */}
@@ -288,7 +306,8 @@ const AdminReviewsTab: React.FC = () => {
               {filteredByRating.map((review) => (
                 <tr 
                   key={review.id} 
-                  className={`hover:bg-slate-50 ${review.objection?.status === 'pending' ? 'bg-orange-50/50' : ''}`}
+                  className={`hover:bg-slate-50 cursor-pointer ${review.objection?.status === 'pending' ? 'bg-orange-50/50' : ''}`}
+                  onClick={() => setSelectedReview(review)}
                 >
                   <td className="px-6 py-4">
                     <div>

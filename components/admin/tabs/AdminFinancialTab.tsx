@@ -182,25 +182,26 @@ const AdminFinancialTab: React.FC = () => {
   };
 
   const exportToCSV = () => {
-    const headers = ['ID', 'Partner', 'Müşteri', 'Hizmet', 'Tutar', 'Komisyon', 'Partner Kazancı', 'Durum', 'Tarih'];
+    const headers = ['ID', 'Partner', 'Müşteri', 'Hizmet', 'Tutar', 'Partner Kazancı', 'Durum', 'Tarih'];
     const rows = filteredByStatus.map(p => [
       p.id,
       p.partnerName,
       p.customer,
       p.service,
       `${p.amount}₺`,
-      `${p.commission}₺`,
       `${p.partnerEarning}₺`,
       p.status,
       p.date,
     ]);
     const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
+    // UTF-8 BOM ekleyerek Türkçe karakterlerin Excel'de doğru görünmesini sağla
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = `yolmov-finansal-rapor-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
+    URL.revokeObjectURL(url);
   };
 
   return (

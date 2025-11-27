@@ -213,7 +213,7 @@ const AdminJobHistoryTab: React.FC = () => {
   };
 
   const exportToCSV = () => {
-    const headers = ['İş ID', 'Partner', 'Müşteri', 'Hizmet', 'Başlangıç', 'Bitiş', 'Süre (dk)', 'Mesafe (km)', 'Tutar', 'Komisyon', 'Partner Kazancı', 'Puan'];
+    const headers = ['İş ID', 'Partner', 'Müşteri', 'Hizmet', 'Başlangıç', 'Bitiş', 'Süre (dk)', 'Mesafe (km)', 'Tutar', 'Partner Kazancı', 'Puan'];
     const rows = filteredByPartner.map(j => [
       j.id,
       j.partnerName,
@@ -224,17 +224,18 @@ const AdminJobHistoryTab: React.FC = () => {
       j.duration,
       j.distance || '-',
       `${j.totalAmount}₺`,
-      `${j.commission}₺`,
       `${j.partnerEarning}₺`,
       j.rating || '-',
     ]);
     const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
+    // UTF-8 BOM ekleyerek Türkçe karakterlerin Excel'de doğru görünmesini sağla
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = `yolmov-is-gecmisi-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
+    URL.revokeObjectURL(url);
   };
 
   return (

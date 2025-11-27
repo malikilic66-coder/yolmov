@@ -4,13 +4,12 @@
  */
 
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Search, Truck, Eye, Edit, CheckCircle, XCircle, User, Calendar, Wrench, MapPin } from 'lucide-react';
 import { useAdminFilter } from '../hooks/useAdminFilter';
 import StatusBadge from '../ui/StatusBadge';
 import EmptyState from '../ui/EmptyState';
 
-interface Vehicle {
+export interface Vehicle {
   id: string;
   partnerId: string;
   partnerName: string;
@@ -120,8 +119,11 @@ const MOCK_VEHICLES: Vehicle[] = [
   },
 ];
 
-const AdminFleetTab: React.FC = () => {
-  const navigate = useNavigate();
+interface AdminFleetTabProps {
+  onViewVehicle: (vehicle: Vehicle) => void;
+}
+
+const AdminFleetTab: React.FC<AdminFleetTabProps> = ({ onViewVehicle }) => {
   const [vehicles, setVehicles] = useState(MOCK_VEHICLES);
 
   const { filtered, searchTerm, setSearchTerm, filterType, setFilterType } = useAdminFilter<Vehicle>(
@@ -257,7 +259,7 @@ const AdminFleetTab: React.FC = () => {
                 </div>
 
                 <button
-                  onClick={() => navigate(`/admin/filo/${vehicle.id}`)}
+                  onClick={() => onViewVehicle(vehicle)}
                   className="w-full py-2 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 flex items-center justify-center gap-2"
                 >
                   <Eye size={18} />
