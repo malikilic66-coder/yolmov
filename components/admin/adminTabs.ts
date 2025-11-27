@@ -1,8 +1,8 @@
-import { BarChart3, Users, Shield, FileText, DollarSign, PieChart, FileCheck, Truck, Star, Wallet, History, CreditCard, UserCheck } from 'lucide-react';
+import { BarChart3, Users, Shield, FileText, DollarSign, PieChart, FileCheck, Truck, Star, Wallet, History, CreditCard, UserCheck, Settings } from 'lucide-react';
 import { AdminRole } from '../../types';
 
 export interface AdminTabDef {
-  id: 'overview' | 'users' | 'partners' | 'requests' | 'customer-requests' | 'offers' | 'reports' | 'documents' | 'fleet' | 'reviews' | 'financial' | 'credits' | 'job-history';
+  id: 'overview' | 'users' | 'partners' | 'requests' | 'customer-requests' | 'offers' | 'reports' | 'documents' | 'fleet' | 'reviews' | 'financial' | 'credits' | 'job-history' | 'admin-users';
   label: string;
   icon: any; // Lucide icon component
   allowedRoles?: AdminRole[]; // empty => all roles
@@ -22,4 +22,5 @@ export const adminTabs: AdminTabDef[] = [
   { id: 'credits', label: 'Kredi Yönetimi', icon: CreditCard, allowedRoles: [AdminRole.SUPER_ADMIN, AdminRole.FINANCE] },
   { id: 'job-history', label: 'İş Geçmişi', icon: History },
   { id: 'reports', label: 'Raporlar', icon: PieChart, allowedRoles: [AdminRole.SUPER_ADMIN, AdminRole.FINANCE] },
+  { id: 'admin-users', label: 'Admin Kullanıcıları', icon: Settings, allowedRoles: [AdminRole.SUPER_ADMIN] },
 ];

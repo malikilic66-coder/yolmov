@@ -278,7 +278,7 @@ const AdminRequestsTab: React.FC<Props> = ({ leadRequests, areaRequests, support
                     <tr 
                       key={request.id} 
                       className="hover:bg-slate-50 cursor-pointer transition-colors"
-                      onClick={() => navigate(`/admin/talep/lead/${request.id}`)}
+                      onClick={() => navigate(`/admin/talepler/lead/${request.id}`)}
                     >
                       <td className="px-6 py-4">
                         <p className="font-bold text-slate-900">{request.partnerName}</p>
@@ -302,7 +302,7 @@ const AdminRequestsTab: React.FC<Props> = ({ leadRequests, areaRequests, support
                       <td className="px-6 py-4 text-sm text-slate-600">{request.createdAt}</td>
                       <td className="px-6 py-4 text-right">
                         <button 
-                          onClick={(e) => { e.stopPropagation(); navigate(`/admin/talep/lead/${request.id}`); }}
+                          onClick={(e) => { e.stopPropagation(); navigate(`/admin/talepler/lead/${request.id}`); }}
                           className="p-2 text-slate-400 hover:text-blue-600 bg-slate-50 hover:bg-blue-50 rounded-lg transition-colors"
                         >
                           <Eye size={18} />
@@ -397,7 +397,7 @@ const AdminRequestsTab: React.FC<Props> = ({ leadRequests, areaRequests, support
                     <tr 
                       key={request.id} 
                       className="hover:bg-slate-50 cursor-pointer transition-colors"
-                      onClick={() => navigate(`/admin/talep/alan/${request.id}`)}
+                      onClick={() => navigate(`/admin/talepler/alan/${request.id}`)}
                     >
                       <td className="px-6 py-4">
                         <p className="font-bold text-slate-900">{request.partnerName}</p>
@@ -440,7 +440,7 @@ const AdminRequestsTab: React.FC<Props> = ({ leadRequests, areaRequests, support
                       <td className="px-6 py-4 text-sm text-slate-600">{request.createdAt}</td>
                       <td className="px-6 py-4 text-right">
                         <button 
-                          onClick={(e) => { e.stopPropagation(); navigate(`/admin/talep/alan/${request.id}`); }}
+                          onClick={(e) => { e.stopPropagation(); navigate(`/admin/talepler/alan/${request.id}`); }}
                           className="p-2 text-slate-400 hover:text-green-600 bg-slate-50 hover:bg-green-50 rounded-lg transition-colors"
                         >
                           <Eye size={18} />
@@ -544,7 +544,7 @@ const AdminRequestsTab: React.FC<Props> = ({ leadRequests, areaRequests, support
                     <tr 
                       key={request.id} 
                       className="hover:bg-slate-50 cursor-pointer transition-colors"
-                      onClick={() => navigate(`/admin/talep/destek/${request.id}`)}
+                      onClick={() => navigate(`/admin/talepler/destek/${request.id}`)}
                     >
                       <td className="px-6 py-4">
                         <p className="font-bold text-slate-900">{request.partnerName}</p>
@@ -571,7 +571,7 @@ const AdminRequestsTab: React.FC<Props> = ({ leadRequests, areaRequests, support
                       <td className="px-6 py-4 text-sm text-slate-600">{request.createdAt}</td>
                       <td className="px-6 py-4 text-right">
                         <button 
-                          onClick={(e) => { e.stopPropagation(); navigate(`/admin/talep/destek/${request.id}`); }}
+                          onClick={(e) => { e.stopPropagation(); navigate(`/admin/talepler/destek/${request.id}`); }}
                           className="p-2 text-slate-400 hover:text-purple-600 bg-slate-50 hover:bg-purple-50 rounded-lg transition-colors"
                         >
                           <Eye size={18} />

@@ -290,7 +290,7 @@ const AdminReviewsTab: React.FC = () => {
                 <tr 
                   key={review.id} 
                   className={`hover:bg-slate-50 cursor-pointer ${review.objection?.status === 'pending' ? 'bg-orange-50/50' : ''}`}
-                  onClick={() => navigate(`/admin/review/${review.id}`)}
+                  onClick={() => navigate(`/admin/degerlendirmeler/${review.id}`)}
                 >
                   <td className="px-6 py-4">
                     <div>
@@ -333,7 +333,7 @@ const AdminReviewsTab: React.FC = () => {
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <button
-                        onClick={(e) => { e.stopPropagation(); navigate(`/admin/review/${review.id}`); }}
+                        onClick={(e) => { e.stopPropagation(); navigate(`/admin/degerlendirmeler/${review.id}`); }}
                         className="p-2 text-slate-400 hover:text-blue-600 bg-slate-50 hover:bg-blue-50 rounded-lg transition-colors"
                       >
                         <Eye size={16} />

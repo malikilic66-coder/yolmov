@@ -1,6 +1,6 @@
 import React, { useState, lazy, Suspense, useEffect } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
-import { Users, Shield, FileText, Search, Eye, Edit, Trash2, UserPlus, CheckCircle, DollarSign, Mail, Phone, Star } from 'lucide-react';
+import { Users, Shield, FileText, Search, Eye, Edit, Trash2, UserPlus, CheckCircle, DollarSign, Mail, Phone, Star, MapPin, Clock, User, CreditCard, XCircle, Truck, Calendar } from 'lucide-react';
 import AdminSidebar from './AdminSidebar';
 import AdminHeader from './AdminHeader';
 import RequestDetailModal from './modals/RequestDetailModal';
@@ -19,6 +19,7 @@ const AdminReviewsTab = lazy(() => import('./tabs/AdminReviewsTab'));
 const AdminFinancialTab = lazy(() => import('./tabs/AdminFinancialTab'));
 const AdminCreditsTab = lazy(() => import('./tabs/AdminCreditsTab'));
 const AdminJobHistoryTab = lazy(() => import('./tabs/AdminJobHistoryTab'));
+const AdminUsersTab = lazy(() => import('./tabs/AdminUsersTab'));
 const AdminRequestsTab = lazy(() => import('./tabs/AdminRequestsTab'));
 const AdminCustomerRequestsTab = lazy(() => import('./tabs/AdminCustomerRequestsTab'));
 
@@ -284,8 +285,8 @@ const MOCK_OFFERS: OfferLog[] = [
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const params = useParams<{ id?: string }>();
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'partners' | 'requests' | 'customer-requests' | 'offers' | 'reports' | 'documents' | 'fleet' | 'reviews' | 'financial' | 'credits' | 'job-history'>('overview');
+  const params = useParams<{ id?: string; vehicleId?: string }>();
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'partners' | 'requests' | 'customer-requests' | 'offers' | 'reports' | 'documents' | 'fleet' | 'reviews' | 'financial' | 'credits' | 'job-history' | 'admin-users'>('overview');
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [userTypeFilter, setUserTypeFilter] = useState<'all' | 'customer' | 'partner'>('all');
   const [selectedRequest, setSelectedRequest] = useState<CustomerRequestLog | null>(null);
@@ -308,7 +309,8 @@ const AdminDashboard: React.FC = () => {
       '/admin/degerlendirmeler': 'reviews',
       '/admin/finansal': 'financial',
       '/admin/krediler': 'credits',
-      '/admin/is-gecmisi': 'job-history'
+      '/admin/is-gecmisi': 'job-history',
+      '/admin/admin-kullanicilari': 'admin-users'
     };
     
     // Detay sayfaları için tab belirleme
@@ -318,6 +320,22 @@ const AdminDashboard: React.FC = () => {
     }
     if (location.pathname.startsWith('/admin/partnerler/')) {
       setActiveTab('partners');
+      return;
+    }
+    if (location.pathname.startsWith('/admin/talepler/')) {
+      setActiveTab('requests');
+      return;
+    }
+    if (location.pathname.startsWith('/admin/teklifler/')) {
+      setActiveTab('offers');
+      return;
+    }
+    if (location.pathname.startsWith('/admin/filo/')) {
+      setActiveTab('fleet');
+      return;
+    }
+    if (location.pathname.startsWith('/admin/degerlendirmeler/')) {
+      setActiveTab('reviews');
       return;
     }
     const newTab = pathMap[location.pathname];
@@ -341,7 +359,8 @@ const AdminDashboard: React.FC = () => {
       'reviews': '/admin/degerlendirmeler',
       'financial': '/admin/finansal',
       'credits': '/admin/krediler',
-      'job-history': '/admin/is-gecmisi'
+      'job-history': '/admin/is-gecmisi',
+      'admin-users': '/admin/admin-kullanicilari'
     };
     const newUrl = urlMap[tabId] || '/admin';
     navigate(newUrl);
@@ -437,7 +456,10 @@ const AdminDashboard: React.FC = () => {
                     <div 
                       key={req.id} 
                       className="flex items-center justify-between p-4 bg-slate-50 rounded-xl hover:bg-slate-100 cursor-pointer transition-colors"
-                      onClick={() => navigate(`/admin/musteri-talepleri/${req.id}`)}
+                      onClick={() => {
+                        setActiveTab('customer-requests');
+                        navigate(`/admin/musteri-talepleri`);
+                      }}
                     >
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center"><FileText size={20} className="text-blue-600" /></div>
@@ -633,23 +655,62 @@ const AdminDashboard: React.FC = () => {
           )}
 
           {activeTab === 'requests' && (
-            <Suspense fallback={<LoadingSkeleton rows={6} />}>
-              <AdminRequestsTab 
-                leadRequests={MOCK_LEAD_REQUESTS}
-                areaRequests={MOCK_AREA_REQUESTS}
-                supportRequests={MOCK_SUPPORT_REQUESTS}
-              />
-            </Suspense>
+            <div>
+              {location.pathname.startsWith('/admin/talepler/lead/') && params.id ? (
+                <LeadRequestDetailPanel 
+                  requestId={params.id} 
+                  onBack={() => navigate('/admin/talepler')} 
+                />
+              ) : location.pathname.startsWith('/admin/talepler/alan/') && params.id ? (
+                <AreaRequestDetailPanel 
+                  requestId={params.id} 
+                  onBack={() => navigate('/admin/talepler')} 
+                />
+              ) : location.pathname.startsWith('/admin/talepler/destek/') && params.id ? (
+                <SupportRequestDetailPanel 
+                  requestId={params.id} 
+                  onBack={() => navigate('/admin/talepler')} 
+                />
+              ) : (
+                <Suspense fallback={<LoadingSkeleton rows={6} />}>
+                  <AdminRequestsTab 
+                    leadRequests={MOCK_LEAD_REQUESTS}
+                    areaRequests={MOCK_AREA_REQUESTS}
+                    supportRequests={MOCK_SUPPORT_REQUESTS}
+                  />
+                </Suspense>
+              )}
+            </div>
           )}
 
           {activeTab === 'customer-requests' && (
-            <Suspense fallback={<LoadingSkeleton rows={6} />}>
-              <AdminCustomerRequestsTab requests={MOCK_CUSTOMER_REQUESTS} />
-            </Suspense>
+            <div>
+              {params.id ? (
+                <CustomerRequestDetailPanel 
+                  requestId={params.id} 
+                  onBack={() => navigate('/admin/musteri-talepleri')} 
+                />
+              ) : (
+                <Suspense fallback={<LoadingSkeleton rows={6} />}>
+                  <AdminCustomerRequestsTab requests={MOCK_CUSTOMER_REQUESTS} />
+                </Suspense>
+              )}
+            </div>
           )}
 
           {activeTab === 'offers' && (
-            <Suspense fallback={<LoadingSkeleton rows={6} />}><AdminOffersTab data={MOCK_OFFERS} onViewOffer={(offer) => navigate(`/admin/teklif/${offer.id}`)} /></Suspense>
+            <div>
+              {params.id ? (
+                <OfferDetailPanel 
+                  offerId={params.id} 
+                  onBack={() => navigate('/admin/teklifler')} 
+                />
+              ) : (
+                <Suspense fallback={<LoadingSkeleton rows={6} />}>
+                  <AdminOffersTab data={MOCK_OFFERS} onViewOffer={(offer) => navigate(`/admin/teklifler/${offer.id}`)} />
+                </Suspense>
+              )}
+            </div>
           )}
           {activeTab === 'reports' && (
             <Suspense fallback={<LoadingSkeleton rows={6} />}><AdminReportsTab /></Suspense>
@@ -658,10 +719,32 @@ const AdminDashboard: React.FC = () => {
             <Suspense fallback={<LoadingSkeleton rows={6} />}><AdminDocumentsTab /></Suspense>
           )}
           {activeTab === 'fleet' && (
-            <Suspense fallback={<LoadingSkeleton rows={6} />}><AdminFleetTab onViewVehicle={setSelectedVehicle} /></Suspense>
+            <div>
+              {params.vehicleId ? (
+                <VehicleDetailPanel 
+                  vehicleId={params.vehicleId} 
+                  onBack={() => navigate('/admin/filo')} 
+                />
+              ) : (
+                <Suspense fallback={<LoadingSkeleton rows={6} />}>
+                  <AdminFleetTab onViewVehicle={(vehicle: any) => navigate(`/admin/filo/${vehicle.id}`)} />
+                </Suspense>
+              )}
+            </div>
           )}
           {activeTab === 'reviews' && (
-            <Suspense fallback={<LoadingSkeleton rows={6} />}><AdminReviewsTab /></Suspense>
+            <div>
+              {params.id ? (
+                <ReviewDetailPanel 
+                  reviewId={params.id} 
+                  onBack={() => navigate('/admin/degerlendirmeler')} 
+                />
+              ) : (
+                <Suspense fallback={<LoadingSkeleton rows={6} />}>
+                  <AdminReviewsTab />
+                </Suspense>
+              )}
+            </div>
           )}
           {activeTab === 'financial' && (
             <Suspense fallback={<LoadingSkeleton rows={6} />}><AdminFinancialTab /></Suspense>
@@ -671,6 +754,9 @@ const AdminDashboard: React.FC = () => {
           )}
           {activeTab === 'job-history' && (
             <Suspense fallback={<LoadingSkeleton rows={6} />}><AdminJobHistoryTab /></Suspense>
+          )}
+          {activeTab === 'admin-users' && (
+            <Suspense fallback={<LoadingSkeleton rows={6} />}><AdminUsersTab /></Suspense>
           )}
         </main>
       </div>
@@ -741,6 +827,969 @@ const AdminDashboard: React.FC = () => {
   );
 };
 
+// Request Detail Panel Components (Inline)
+interface LeadRequestDetailPanelProps {
+  requestId: string;
+  onBack: () => void;
+}
+
+const LeadRequestDetailPanel: React.FC<LeadRequestDetailPanelProps> = ({ requestId, onBack }) => {
+  const [requestState, setRequestState] = React.useState<any>(null);
+
+  React.useEffect(() => {
+    const request = MOCK_LEAD_REQUESTS.find(r => r.id === requestId);
+    setRequestState(request || null);
+  }, [requestId]);
+
+  const request = requestState;
+
+  const handleApprove = () => {
+    if (!request) return;
+    if (confirm(`${request.partnerName} için lead talebi onaylanacak. Devam edilsin mi?`)) {
+      setRequestState({ ...request, status: 'approved', resolvedAt: new Date().toISOString(), resolvedBy: 'Admin' });
+      alert('Lead talebi onaylandı.');
+    }
+  };
+
+  const handleReject = () => {
+    if (!request) return;
+    const notes = prompt('Red nedeni (opsiyonel):');
+    if (confirm(`${request.partnerName} için lead talebi reddedilecek. Devam edilsin mi?`)) {
+      setRequestState({ ...request, status: 'rejected', resolvedAt: new Date().toISOString(), resolvedBy: 'Admin', adminNotes: notes || undefined });
+      alert('Lead talebi reddedildi.');
+    }
+  };
+
+  if (!request) {
+    return (
+      <div className="bg-white rounded-2xl border border-slate-200 p-8">
+        <button onClick={onBack} className="flex items-center gap-2 text-slate-600 hover:text-slate-900 mb-4">
+          ← Geri Dön
+        </button>
+        <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl">
+          Lead talebi bulunamadı.
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+          ← Geri
+        </button>
+        <h2 className="text-2xl font-bold text-slate-900">Lead Talebi Detayı</h2>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-slate-200 p-6">
+        <div className="flex items-start justify-between mb-6">
+          <div>
+            <h3 className="text-2xl font-bold text-slate-900">{request.partnerName}</h3>
+            <p className="text-slate-500">{request.id}</p>
+          </div>
+          <span className={`px-4 py-2 rounded-full text-sm font-bold ${
+            request.status === 'approved' ? 'bg-green-100 text-green-700' :
+            request.status === 'rejected' ? 'bg-red-100 text-red-700' :
+            'bg-orange-100 text-orange-700'
+          }`}>
+            {request.status === 'approved' ? 'Onaylandı' : request.status === 'rejected' ? 'Reddedildi' : 'Bekliyor'}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl">
+            <MapPin size={20} className="text-slate-400" />
+            <div>
+              <p className="text-xs text-slate-500">Bölge</p>
+              <p className="font-medium text-slate-900">{request.serviceArea}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl">
+            <Phone size={20} className="text-slate-400" />
+            <div>
+              <p className="text-xs text-slate-500">Hizmet Tipi</p>
+              <p className="font-medium text-slate-900">{request.serviceType}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-xl border border-blue-200">
+            <CreditCard size={20} className="text-blue-600" />
+            <div>
+              <p className="text-xs text-blue-700 font-bold">Maliyet</p>
+              <p className="font-black text-2xl text-blue-900">{request.creditCost} Kredi</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl">
+            <Clock size={20} className="text-slate-400" />
+            <div>
+              <p className="text-xs text-slate-500">Oluşturulma</p>
+              <p className="font-medium text-slate-900">{request.createdAt}</p>
+            </div>
+          </div>
+        </div>
+
+        {request.status === 'pending' && (
+          <div className="flex gap-3 mt-6">
+            <button 
+              onClick={handleApprove}
+              className="px-6 py-3 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition-colors flex items-center gap-2"
+            >
+              <CheckCircle size={20} />
+              Onayla
+            </button>
+            <button 
+              onClick={handleReject}
+              className="px-6 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-colors flex items-center gap-2"
+            >
+              <XCircle size={20} />
+              Reddet
+            </button>
+          </div>
+        )}
+
+        {request.status !== 'pending' && request.resolvedAt && (
+          <div className="mt-6 p-4 bg-slate-50 rounded-xl">
+            <p className="text-sm text-slate-600">
+              <strong>Çözüldü:</strong> {request.resolvedAt} - {request.resolvedBy}
+            </p>
+            {request.adminNotes && (
+              <p className="text-sm text-slate-600 mt-2">
+                <strong>Not:</strong> {request.adminNotes}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Area Request Detail Panel
+const AreaRequestDetailPanel: React.FC<LeadRequestDetailPanelProps> = ({ requestId, onBack }) => {
+  const [requestState, setRequestState] = React.useState<any>(null);
+
+  React.useEffect(() => {
+    const request = MOCK_AREA_REQUESTS.find(r => r.id === requestId);
+    setRequestState(request || null);
+  }, [requestId]);
+
+  const request = requestState;
+
+  const handleApprove = () => {
+    if (!request) return;
+    if (confirm(`${request.partnerName} için alan genişletme talebi onaylanacak. Devam edilsin mi?`)) {
+      setRequestState({ ...request, status: 'approved', resolvedAt: new Date().toISOString(), resolvedBy: 'Admin' });
+      alert('Alan genişletme talebi onaylandı.');
+    }
+  };
+
+  const handleReject = () => {
+    if (!request) return;
+    const notes = prompt('Red nedeni:');
+    if (notes && confirm(`${request.partnerName} için alan genişletme talebi reddedilecek. Devam edilsin mi?`)) {
+      setRequestState({ ...request, status: 'rejected', resolvedAt: new Date().toISOString(), resolvedBy: 'Admin', adminNotes: notes });
+      alert('Alan genişletme talebi reddedildi.');
+    }
+  };
+
+  if (!request) {
+    return (
+      <div className="bg-white rounded-2xl border border-slate-200 p-8">
+        <button onClick={onBack} className="flex items-center gap-2 text-slate-600 hover:text-slate-900 mb-4">
+          ← Geri Dön
+        </button>
+        <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl">
+          Alan genişletme talebi bulunamadı.
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+          ← Geri
+        </button>
+        <h2 className="text-2xl font-bold text-slate-900">Alan Genişletme Talebi</h2>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-slate-200 p-6">
+        <div className="flex items-start justify-between mb-6">
+          <div>
+            <h3 className="text-2xl font-bold text-slate-900">{request.partnerName}</h3>
+            <p className="text-slate-500">{request.id}</p>
+          </div>
+          <span className={`px-4 py-2 rounded-full text-sm font-bold ${
+            request.status === 'approved' ? 'bg-green-100 text-green-700' :
+            request.status === 'rejected' ? 'bg-red-100 text-red-700' :
+            'bg-orange-100 text-orange-700'
+          }`}>
+            {request.status === 'approved' ? 'Onaylandı' : request.status === 'rejected' ? 'Reddedildi' : 'Bekliyor'}
+          </span>
+        </div>
+
+        <div className="space-y-4">
+          <div className="p-4 bg-slate-50 rounded-xl">
+            <p className="text-xs text-slate-500 mb-2">Mevcut Bölgeler</p>
+            <div className="flex flex-wrap gap-2">
+              {request.currentAreas?.map((area: string, idx: number) => (
+                <span key={idx} className="px-3 py-1 bg-slate-200 text-slate-700 rounded-lg text-sm font-medium">
+                  {area}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div className="p-4 bg-green-50 rounded-xl border border-green-200">
+            <p className="text-xs text-green-700 font-bold mb-2">İstenen Yeni Bölgeler</p>
+            <div className="flex flex-wrap gap-2">
+              {request.requestedAreas?.map((area: string, idx: number) => (
+                <span key={idx} className="px-3 py-1 bg-green-200 text-green-800 rounded-lg text-sm font-bold">
+                  {area}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {request.reason && (
+            <div className="p-4 bg-blue-50 rounded-xl border border-blue-200">
+              <p className="text-xs text-blue-700 font-bold mb-1">Gerekçe</p>
+              <p className="text-sm text-blue-900">{request.reason}</p>
+            </div>
+          )}
+
+          <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl">
+            <Clock size={20} className="text-slate-400" />
+            <div>
+              <p className="text-xs text-slate-500">Oluşturulma</p>
+              <p className="font-medium text-slate-900">{request.createdAt}</p>
+            </div>
+          </div>
+        </div>
+
+        {request.status === 'pending' && (
+          <div className="flex gap-3 mt-6">
+            <button 
+              onClick={handleApprove}
+              className="px-6 py-3 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition-colors flex items-center gap-2"
+            >
+              <CheckCircle size={20} />
+              Onayla
+            </button>
+            <button 
+              onClick={handleReject}
+              className="px-6 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-colors flex items-center gap-2"
+            >
+              <XCircle size={20} />
+              Reddet
+            </button>
+          </div>
+        )}
+
+        {request.status !== 'pending' && request.resolvedAt && (
+          <div className="mt-6 p-4 bg-slate-50 rounded-xl">
+            <p className="text-sm text-slate-600">
+              <strong>Çözüldü:</strong> {request.resolvedAt} - {request.resolvedBy}
+            </p>
+            {request.adminNotes && (
+              <p className="text-sm text-slate-600 mt-2">
+                <strong>Not:</strong> {request.adminNotes}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Support Request Detail Panel
+const SupportRequestDetailPanel: React.FC<LeadRequestDetailPanelProps> = ({ requestId, onBack }) => {
+  const [requestState, setRequestState] = React.useState<any>(null);
+
+  React.useEffect(() => {
+    const request = MOCK_SUPPORT_REQUESTS.find(r => r.id === requestId);
+    setRequestState(request || null);
+  }, [requestId]);
+
+  const request = requestState;
+
+  const handleResolve = () => {
+    if (!request) return;
+    const resolution = prompt('Çözüm açıklaması:');
+    if (resolution && confirm('Destek talebi çözüldü olarak işaretlenecek. Devam edilsin mi?')) {
+      setRequestState({ ...request, status: 'resolved', updatedAt: new Date().toISOString(), resolution });
+      alert('Destek talebi çözüldü olarak işaretlendi.');
+    }
+  };
+
+  const handleClose = () => {
+    if (!request) return;
+    if (confirm('Destek talebi kapatılacak. Devam edilsin mi?')) {
+      setRequestState({ ...request, status: 'closed', updatedAt: new Date().toISOString() });
+      alert('Destek talebi kapatıldı.');
+    }
+  };
+
+  if (!request) {
+    return (
+      <div className="bg-white rounded-2xl border border-slate-200 p-8">
+        <button onClick={onBack} className="flex items-center gap-2 text-slate-600 hover:text-slate-900 mb-4">
+          ← Geri Dön
+        </button>
+        <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl">
+          Destek talebi bulunamadı.
+        </div>
+      </div>
+    );
+  }
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'urgent': return 'bg-red-100 text-red-700 border-red-200';
+      case 'high': return 'bg-orange-100 text-orange-700 border-orange-200';
+      case 'medium': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
+      case 'low': return 'bg-blue-100 text-blue-700 border-blue-200';
+      default: return 'bg-slate-100 text-slate-700 border-slate-200';
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+          ← Geri
+        </button>
+        <h2 className="text-2xl font-bold text-slate-900">Destek Talebi Detayı</h2>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-slate-200 p-6">
+        <div className="flex items-start justify-between mb-6">
+          <div>
+            <h3 className="text-2xl font-bold text-slate-900">{request.partnerName}</h3>
+            <p className="text-slate-500">{request.id}</p>
+          </div>
+          <div className="flex gap-2">
+            <span className={`px-3 py-1 rounded-full text-xs font-bold border ${getPriorityColor(request.priority)}`}>
+              {request.priority.toUpperCase()}
+            </span>
+            <span className={`px-4 py-2 rounded-full text-sm font-bold ${
+              request.status === 'resolved' ? 'bg-green-100 text-green-700' :
+              request.status === 'closed' ? 'bg-slate-100 text-slate-700' :
+              request.status === 'in_progress' ? 'bg-blue-100 text-blue-700' :
+              'bg-orange-100 text-orange-700'
+            }`}>
+              {request.status === 'resolved' ? 'Çözüldü' : request.status === 'closed' ? 'Kapatıldı' : request.status === 'in_progress' ? 'İşlemde' : 'Açık'}
+            </span>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div className="p-4 bg-slate-50 rounded-xl">
+            <p className="text-xs text-slate-500 mb-1">Konu</p>
+            <p className="font-bold text-lg text-slate-900">{request.subject}</p>
+          </div>
+
+          <div className="p-4 bg-blue-50 rounded-xl border border-blue-200">
+            <p className="text-xs text-blue-700 font-bold mb-2">Açıklama</p>
+            <p className="text-sm text-blue-900 whitespace-pre-wrap">{request.description}</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl">
+              <Clock size={20} className="text-slate-400" />
+              <div>
+                <p className="text-xs text-slate-500">Oluşturulma</p>
+                <p className="font-medium text-slate-900">{request.createdAt}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl">
+              <User size={20} className="text-slate-400" />
+              <div>
+                <p className="text-xs text-slate-500">Atanan</p>
+                <p className="font-medium text-slate-900">{request.assignedTo || 'Henüz atanmadı'}</p>
+              </div>
+            </div>
+          </div>
+
+          {request.resolution && (
+            <div className="p-4 bg-green-50 rounded-xl border border-green-200">
+              <p className="text-xs text-green-700 font-bold mb-1">Çözüm</p>
+              <p className="text-sm text-green-900">{request.resolution}</p>
+            </div>
+          )}
+        </div>
+
+        {(request.status === 'open' || request.status === 'in_progress') && (
+          <div className="flex gap-3 mt-6">
+            <button 
+              onClick={handleResolve}
+              className="px-6 py-3 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition-colors flex items-center gap-2"
+            >
+              <CheckCircle size={20} />
+              Çözüldü İşaretle
+            </button>
+            <button 
+              onClick={handleClose}
+              className="px-6 py-3 bg-slate-600 text-white rounded-xl font-bold hover:bg-slate-700 transition-colors flex items-center gap-2"
+            >
+              <XCircle size={20} />
+              Kapat
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Offer Detail Panel Component
+interface OfferDetailPanelProps {
+  offerId: string;
+  onBack: () => void;
+}
+
+const OfferDetailPanel: React.FC<OfferDetailPanelProps> = ({ offerId, onBack }) => {
+  const [offerState, setOfferState] = React.useState<any>(null);
+
+  React.useEffect(() => {
+    const offer = MOCK_OFFERS.find(o => o.id === offerId);
+    setOfferState(offer || null);
+  }, [offerId]);
+
+  const offer = offerState;
+
+  const handleStatusChange = (newStatus: 'sent' | 'accepted' | 'rejected') => {
+    if (!offer) return;
+    if (confirm(`Teklif durumu "${newStatus}" olarak güncellenecek. Onaylıyor musunuz?`)) {
+      setOfferState({ ...offer, status: newStatus });
+      alert('Teklif durumu güncellendi.');
+    }
+  };
+
+  if (!offer) {
+    return (
+      <div className="bg-white rounded-2xl border border-slate-200 p-8">
+        <button onClick={onBack} className="flex items-center gap-2 text-slate-600 hover:text-slate-900 mb-4">
+          ← Geri Dön
+        </button>
+        <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl">
+          Teklif bulunamadı.
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+          ← Geri
+        </button>
+        <h2 className="text-2xl font-bold text-slate-900">Teklif Detayı</h2>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-slate-200 p-6">
+        <div className="flex items-start justify-between mb-6">
+          <div>
+            <h3 className="text-2xl font-bold text-slate-900">{offer.partnerName}</h3>
+            <p className="text-slate-500 font-mono text-sm">{offer.id}</p>
+          </div>
+          <span className={`px-4 py-2 rounded-full text-sm font-bold ${
+            offer.status === 'accepted' ? 'bg-green-100 text-green-700' :
+            offer.status === 'rejected' ? 'bg-red-100 text-red-700' :
+            'bg-blue-100 text-blue-700'
+          }`}>
+            {offer.status === 'accepted' ? 'Kabul Edildi' :
+             offer.status === 'rejected' ? 'Reddedildi' : 'Gönderildi'}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl">
+            <User size={20} className="text-slate-400" />
+            <div>
+              <p className="text-xs text-slate-500">Partner ID</p>
+              <p className="font-medium text-slate-900">{offer.partnerId}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl">
+            <FileText size={20} className="text-slate-400" />
+            <div>
+              <p className="text-xs text-slate-500">Talep ID</p>
+              <p className="font-medium text-slate-900">{offer.requestId}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 p-4 bg-green-50 rounded-xl border border-green-200">
+            <DollarSign size={20} className="text-green-600" />
+            <div>
+              <p className="text-xs text-green-700 font-bold">Fiyat</p>
+              <p className="font-black text-2xl text-green-900">₺{offer.price.toLocaleString()}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl">
+            <Clock size={20} className="text-slate-400" />
+            <div>
+              <p className="text-xs text-slate-500">Oluşturulma</p>
+              <p className="font-medium text-slate-900">{offer.createdAt}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6">
+          <p className="text-sm font-bold text-slate-700 mb-3">Durum Değiştir:</p>
+          <div className="flex gap-2 flex-wrap">
+            {(['sent', 'accepted', 'rejected'] as const).map(status => (
+              <button
+                key={status}
+                onClick={() => handleStatusChange(status)}
+                disabled={offer.status === status}
+                className={`px-4 py-2 rounded-lg font-bold text-sm transition-colors ${
+                  offer.status === status
+                    ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                    : status === 'accepted'
+                    ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                    : status === 'rejected'
+                    ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                    : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                }`}
+              >
+                {status === 'accepted' ? 'Kabul Et' :
+                 status === 'rejected' ? 'Reddet' : 'Gönderildi'}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Vehicle (Fleet) Detail Panel Component
+interface VehicleDetailPanelProps {
+  vehicleId: string;
+  onBack: () => void;
+}
+
+const VehicleDetailPanel: React.FC<VehicleDetailPanelProps> = ({ vehicleId, onBack }) => {
+  const MOCK_VEHICLES: any[] = [
+    {
+      id: 'VEH-001',
+      partnerId: 'PTR-001',
+      partnerName: 'Yılmaz Oto Kurtarma',
+      plate: '34 AB 1234',
+      model: '2020 Ford F-Max',
+      type: 'Kayar Kasa',
+      driver: 'Mehmet Yıldız',
+      status: 'active',
+      registrationDate: '2023-09-10',
+      lastService: '2024-10-15',
+      totalJobs: 128,
+      totalEarnings: 45600,
+    },
+  ];
+
+  const [vehicleState, setVehicleState] = React.useState<any>(null);
+
+  React.useEffect(() => {
+    const vehicle = MOCK_VEHICLES.find(v => v.id === vehicleId);
+    setVehicleState(vehicle || null);
+  }, [vehicleId]);
+
+  const vehicle = vehicleState;
+
+  const handleStatusChange = (newStatus: 'active' | 'maintenance' | 'disabled') => {
+    if (!vehicle) return;
+    if (confirm(`Araç durumu "${newStatus}" olarak güncellenecek. Onaylıyor musunuz?`)) {
+      setVehicleState({ ...vehicle, status: newStatus });
+      alert('Araç durumu güncellendi.');
+    }
+  };
+
+  if (!vehicle) {
+    return (
+      <div className="bg-white rounded-2xl border border-slate-200 p-8">
+        <button onClick={onBack} className="flex items-center gap-2 text-slate-600 hover:text-slate-900 mb-4">
+          ← Geri Dön
+        </button>
+        <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl">
+          Araç bulunamadı.
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+          ← Geri
+        </button>
+        <h2 className="text-2xl font-bold text-slate-900">Araç Detayı</h2>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-slate-200 p-6">
+        <div className="flex items-start justify-between mb-6">
+          <div>
+            <h3 className="text-2xl font-bold text-slate-900">{vehicle.plate}</h3>
+            <p className="text-slate-500">{vehicle.model}</p>
+          </div>
+          <span className={`px-4 py-2 rounded-full text-sm font-bold ${
+            vehicle.status === 'active' ? 'bg-green-100 text-green-700' :
+            vehicle.status === 'maintenance' ? 'bg-yellow-100 text-yellow-700' :
+            'bg-red-100 text-red-700'
+          }`}>
+            {vehicle.status === 'active' ? 'Aktif' :
+             vehicle.status === 'maintenance' ? 'Bakımda' : 'Devre Dışı'}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl">
+            <Shield size={20} className="text-slate-400" />
+            <div>
+              <p className="text-xs text-slate-500">Partner</p>
+              <p className="font-bold text-slate-900">{vehicle.partnerName}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl">
+            <Truck size={20} className="text-slate-400" />
+            <div>
+              <p className="text-xs text-slate-500">Araç Tipi</p>
+              <p className="font-medium text-slate-900">{vehicle.type}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl">
+            <User size={20} className="text-slate-400" />
+            <div>
+              <p className="text-xs text-slate-500">Sürücü</p>
+              <p className="font-medium text-slate-900">{vehicle.driver}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl">
+            <Calendar size={20} className="text-slate-400" />
+            <div>
+              <p className="text-xs text-slate-500">Kayıt Tarihi</p>
+              <p className="font-medium text-slate-900">{vehicle.registrationDate}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-xl border border-blue-200">
+            <CheckCircle size={20} className="text-blue-600" />
+            <div>
+              <p className="text-xs text-blue-700 font-bold">Toplam İş</p>
+              <p className="font-black text-2xl text-blue-900">{vehicle.totalJobs}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 p-4 bg-green-50 rounded-xl border border-green-200">
+            <DollarSign size={20} className="text-green-600" />
+            <div>
+              <p className="text-xs text-green-700 font-bold">Toplam Kazanç</p>
+              <p className="font-black text-2xl text-green-900">₺{vehicle.totalEarnings.toLocaleString()}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6">
+          <p className="text-sm font-bold text-slate-700 mb-3">Durum Değiştir:</p>
+          <div className="flex gap-2 flex-wrap">
+            {(['active', 'maintenance', 'disabled'] as const).map(status => (
+              <button
+                key={status}
+                onClick={() => handleStatusChange(status)}
+                disabled={vehicle.status === status}
+                className={`px-4 py-2 rounded-lg font-bold text-sm transition-colors ${
+                  vehicle.status === status
+                    ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                    : status === 'active'
+                    ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                    : status === 'maintenance'
+                    ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
+                    : 'bg-red-100 text-red-700 hover:bg-red-200'
+                }`}
+              >
+                {status === 'active' ? 'Aktif Et' :
+                 status === 'maintenance' ? 'Bakıma Al' : 'Devre Dışı Bırak'}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Review Detail Panel Component
+interface ReviewDetailPanelProps {
+  reviewId: string;
+  onBack: () => void;
+}
+
+const ReviewDetailPanel: React.FC<ReviewDetailPanelProps> = ({ reviewId, onBack }) => {
+  const MOCK_REVIEWS_DATA: any[] = [
+    {
+      id: 'REV-001',
+      jobId: 'JOB-4923',
+      partnerId: 'PTR-001',
+      partnerName: 'Yılmaz Oto Kurtarma',
+      customerName: 'Ahmet Yılmaz',
+      service: 'Çekici Hizmeti',
+      date: '2024-11-22 15:30',
+      rating: 5,
+      comment: 'Çok hızlı geldi, işini profesyonelce yaptı. Teşekkürler!',
+      tags: ['Kibar Müşteri', 'Sorunsuz Ödeme'],
+    },
+  ];
+
+  const [reviewState, setReviewState] = React.useState<any>(null);
+
+  React.useEffect(() => {
+    const review = MOCK_REVIEWS_DATA.find(r => r.id === reviewId);
+    setReviewState(review || null);
+  }, [reviewId]);
+
+  const review = reviewState;
+
+  if (!review) {
+    return (
+      <div className="bg-white rounded-2xl border border-slate-200 p-8">
+        <button onClick={onBack} className="flex items-center gap-2 text-slate-600 hover:text-slate-900 mb-4">
+          ← Geri Dön
+        </button>
+        <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl">
+          Değerlendirme bulunamadı.
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+          ← Geri
+        </button>
+        <h2 className="text-2xl font-bold text-slate-900">Değerlendirme Detayı</h2>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-slate-200 p-6">
+        <div className="flex items-start justify-between mb-6">
+          <div>
+            <h3 className="text-2xl font-bold text-slate-900">{review.partnerName}</h3>
+            <p className="text-slate-500">{review.id}</p>
+          </div>
+          <div className="flex items-center gap-1">
+            {[1, 2, 3, 4, 5].map((star) => (
+              <Star
+                key={star}
+                size={24}
+                className={star <= review.rating ? 'text-yellow-500 fill-yellow-500' : 'text-slate-300'}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl">
+            <User size={20} className="text-slate-400" />
+            <div>
+              <p className="text-xs text-slate-500">Müşteri</p>
+              <p className="font-bold text-slate-900">{review.customerName}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl">
+            <FileText size={20} className="text-slate-400" />
+            <div>
+              <p className="text-xs text-slate-500">İş ID</p>
+              <p className="font-medium text-slate-900">{review.jobId}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl">
+            <Truck size={20} className="text-slate-400" />
+            <div>
+              <p className="text-xs text-slate-500">Hizmet</p>
+              <p className="font-medium text-slate-900">{review.service}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl">
+            <Clock size={20} className="text-slate-400" />
+            <div>
+              <p className="text-xs text-slate-500">Tarih</p>
+              <p className="font-medium text-slate-900">{review.date}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-200">
+          <p className="text-xs text-blue-700 font-bold mb-2">Yorum</p>
+          <p className="text-sm text-blue-900">{review.comment}</p>
+        </div>
+
+        {review.tags && review.tags.length > 0 && (
+          <div className="mt-4">
+            <p className="text-xs text-slate-500 font-bold mb-2">Etiketler</p>
+            <div className="flex flex-wrap gap-2">
+              {review.tags.map((tag: string, idx: number) => (
+                <span key={idx} className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+                  {tag}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Customer Request Detail Panel Component
+interface CustomerRequestDetailPanelProps {
+  requestId: string;
+  onBack: () => void;
+}
+
+const CustomerRequestDetailPanel: React.FC<CustomerRequestDetailPanelProps> = ({ requestId, onBack }) => {
+  const [requestState, setRequestState] = React.useState<CustomerRequestLog | null>(null);
+
+  React.useEffect(() => {
+    const request = MOCK_CUSTOMER_REQUESTS.find(r => r.id === requestId);
+    setRequestState(request || null);
+  }, [requestId]);
+
+  const request = requestState;
+
+  const handleStatusChange = (newStatus: CustomerRequestLog['status']) => {
+    if (!request) return;
+    if (confirm(`Talep durumu "${newStatus}" olarak güncellenecek. Onaylıyor musunuz?`)) {
+      setRequestState({ ...request, status: newStatus });
+      alert('Talep durumu güncellendi.');
+    }
+  };
+
+  if (!request) {
+    return (
+      <div className="bg-white rounded-2xl border border-slate-200 p-8">
+        <button onClick={onBack} className="flex items-center gap-2 text-slate-600 hover:text-slate-900 mb-4">
+          ← Geri Dön
+        </button>
+        <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl">
+          Müşteri talebi bulunamadı.
+        </div>
+      </div>
+    );
+  }
+
+  const getServiceTypeLabel = (type: string) => {
+    const labels: Record<string, string> = {
+      'towing': 'Çekici',
+      'battery': 'Akü Takviye',
+      'fuel': 'Yakıt',
+      'locksmith': 'Anahtar',
+      'tire': 'Lastik',
+      'winch': 'Vinç',
+    };
+    return labels[type] || type;
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+          ← Geri
+        </button>
+        <h2 className="text-2xl font-bold text-slate-900">Müşteri Talebi Detayı</h2>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-slate-200 p-6">
+        <div className="flex items-start justify-between mb-6">
+          <div>
+            <h3 className="text-2xl font-bold text-slate-900">{request.customerName}</h3>
+            <p className="text-slate-500 font-mono text-sm">{request.id}</p>
+          </div>
+          <span className={`px-4 py-2 rounded-full text-sm font-bold ${
+            request.status === 'completed' ? 'bg-green-100 text-green-700' :
+            request.status === 'matched' ? 'bg-blue-100 text-blue-700' :
+            request.status === 'cancelled' ? 'bg-red-100 text-red-700' :
+            'bg-yellow-100 text-yellow-700'
+          }`}>
+            {request.status === 'completed' ? 'Tamamlandı' :
+             request.status === 'matched' ? 'Eşleşti' :
+             request.status === 'cancelled' ? 'İptal' : 'Açık'}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl">
+            <User size={20} className="text-slate-400" />
+            <div>
+              <p className="text-xs text-slate-500">Müşteri ID</p>
+              <p className="font-medium text-slate-900">{request.customerId}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl">
+            <Phone size={20} className="text-slate-400" />
+            <div>
+              <p className="text-xs text-slate-500">Hizmet Tipi</p>
+              <p className="font-bold text-slate-900">{getServiceTypeLabel(request.serviceType)}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl">
+            <MapPin size={20} className="text-slate-400" />
+            <div>
+              <p className="text-xs text-slate-500">Konum</p>
+              <p className="font-medium text-slate-900">{request.location}</p>
+            </div>
+          </div>
+          {request.amount && (
+            <div className="flex items-center gap-3 p-4 bg-green-50 rounded-xl border border-green-200">
+              <DollarSign size={20} className="text-green-600" />
+              <div>
+                <p className="text-xs text-green-700 font-bold">Tutar</p>
+                <p className="font-black text-2xl text-green-900">₺{request.amount.toLocaleString()}</p>
+              </div>
+            </div>
+          )}
+          <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl">
+            <Clock size={20} className="text-slate-400" />
+            <div>
+              <p className="text-xs text-slate-500">Oluşturulma</p>
+              <p className="font-medium text-slate-900">{request.createdAt}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6">
+          <p className="text-sm font-bold text-slate-700 mb-3">Durum Değiştir:</p>
+          <div className="flex gap-2 flex-wrap">
+            {(['open', 'matched', 'completed', 'cancelled'] as const).map(status => (
+              <button
+                key={status}
+                onClick={() => handleStatusChange(status)}
+                disabled={request.status === status}
+                className={`px-4 py-2 rounded-lg font-bold text-sm transition-colors ${
+                  request.status === status
+                    ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                    : status === 'completed'
+                    ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                    : status === 'matched'
+                    ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                    : status === 'cancelled'
+                    ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                    : 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
+                }`}
+              >
+                {status === 'completed' ? 'Tamamlandı' :
+                 status === 'matched' ? 'Eşleşti' :
+                 status === 'cancelled' ? 'İptal Et' : 'Açık'}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // User Detail Panel Component (Inline)
 interface UserDetailPanelProps {
   userId: string;
@@ -748,12 +1797,33 @@ interface UserDetailPanelProps {
 }
 
 const UserDetailPanel: React.FC<UserDetailPanelProps> = ({ userId, onBack }) => {
-  const MOCK_USERS_DETAIL: User[] = [
-    { id: 'USR-001', name: 'Ahmet Yılmaz', email: 'ahmet@example.com', type: 'customer', status: 'active', joinDate: '2023-10-15', totalSpent: 2400 },
-    { id: 'USR-002', name: 'Selin Kaya', email: 'selin@example.com', type: 'customer', status: 'active', joinDate: '2023-11-01', totalSpent: 800 },
-  ];
+  const [userState, setUserState] = React.useState<User | null>(null);
+
+  React.useEffect(() => {
+    const MOCK_USERS_DETAIL: User[] = [
+      { id: 'USR-001', name: 'Ahmet Yılmaz', email: 'ahmet@example.com', type: 'customer', status: 'active', joinDate: '2023-10-15', totalSpent: 2400 },
+      { id: 'USR-002', name: 'Selin Kaya', email: 'selin@example.com', type: 'customer', status: 'active', joinDate: '2023-11-01', totalSpent: 800 },
+    ];
+    const foundUser = MOCK_USERS_DETAIL.find(u => u.id === userId);
+    setUserState(foundUser || null);
+  }, [userId]);
   
-  const user = MOCK_USERS_DETAIL.find(u => u.id === userId);
+  const user = userState;
+
+  const handleEdit = () => {
+    alert(`${user?.name} kullanıcısı düzenleme özelliği yakında eklenecek.`);
+    // TODO: Modal veya inline düzenleme formu göster
+  };
+
+  const handleToggleStatus = () => {
+    if (!user) return;
+    const newStatus = user.status === 'active' ? 'suspended' : 'active';
+    const action = newStatus === 'active' ? 'aktif edildi' : 'askıya alındı';
+    if (confirm(`${user.name} kullanıcısı ${action}. Onaylıyor musunuz?`)) {
+      setUserState({ ...user, status: newStatus });
+      alert(`Kullanıcı başarıyla ${action}.`);
+    }
+  };
 
   if (!user) {
     return (
@@ -823,10 +1893,16 @@ const UserDetailPanel: React.FC<UserDetailPanelProps> = ({ userId, onBack }) => 
         </div>
 
         <div className="flex gap-3 mt-6">
-          <button className="px-6 py-3 bg-orange-600 text-white rounded-xl font-bold hover:bg-orange-700">
+          <button 
+            onClick={handleEdit}
+            className="px-6 py-3 bg-orange-600 text-white rounded-xl font-bold hover:bg-orange-700 transition-colors"
+          >
             Düzenle
           </button>
-          <button className="px-6 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700">
+          <button 
+            onClick={handleToggleStatus}
+            className="px-6 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-colors"
+          >
             {user.status === 'active' ? 'Askıya Al' : 'Aktif Et'}
           </button>
         </div>
@@ -842,13 +1918,59 @@ interface PartnerDetailPanelProps {
 }
 
 const PartnerDetailPanel: React.FC<PartnerDetailPanelProps> = ({ partnerId, onBack }) => {
-  const MOCK_PARTNERS_DETAIL: Partner[] = [
-    { id: 'PTR-001', name: 'Yılmaz Oto Kurtarma', email: 'yilmaz@partner.com', phone: '0532 XXX XX 01', rating: 4.9, completedJobs: 128, credits: 25, status: 'active' },
-    { id: 'PTR-002', name: 'Hızlı Yol Yardım', email: 'hizli@partner.com', phone: '0533 XXX XX 02', rating: 4.7, completedJobs: 203, credits: 50, status: 'active' },
-    { id: 'PTR-003', name: 'Mega Çekici', email: 'mega@partner.com', phone: '0534 XXX XX 03', rating: 4.5, completedJobs: 89, credits: 10, status: 'pending' },
-  ];
+  const [partnerState, setPartnerState] = React.useState<Partner | null>(null);
+
+  React.useEffect(() => {
+    const MOCK_PARTNERS_DETAIL: Partner[] = [
+      { id: 'PTR-001', name: 'Yılmaz Oto Kurtarma', email: 'yilmaz@partner.com', phone: '0532 XXX XX 01', rating: 4.9, completedJobs: 128, credits: 25, status: 'active' },
+      { id: 'PTR-002', name: 'Hızlı Yol Yardım', email: 'hizli@partner.com', phone: '0533 XXX XX 02', rating: 4.7, completedJobs: 203, credits: 50, status: 'active' },
+      { id: 'PTR-003', name: 'Mega Çekici', email: 'mega@partner.com', phone: '0534 XXX XX 03', rating: 4.5, completedJobs: 89, credits: 10, status: 'pending' },
+    ];
+    const foundPartner = MOCK_PARTNERS_DETAIL.find(p => p.id === partnerId);
+    setPartnerState(foundPartner || null);
+  }, [partnerId]);
   
-  const partner = MOCK_PARTNERS_DETAIL.find(p => p.id === partnerId);
+  const partner = partnerState;
+
+  const handleEdit = () => {
+    alert(`${partner?.name} partner bilgileri düzenleme özelliği yakında eklenecek.`);
+    // TODO: Modal veya inline düzenleme formu göster
+  };
+
+  const handleAddCredit = () => {
+    const creditAmount = prompt(`${partner?.name} için eklenecek kredi miktarını girin:`);
+    if (creditAmount && partner) {
+      const amount = parseInt(creditAmount);
+      if (!isNaN(amount) && amount > 0) {
+        setPartnerState({ ...partner, credits: partner.credits + amount });
+        alert(`${amount} kredi başarıyla eklendi. Yeni bakiye: ${partner.credits + amount}`);
+      } else {
+        alert('Geçerli bir kredi miktarı girin.');
+      }
+    }
+  };
+
+  const handleToggleStatus = () => {
+    if (!partner) return;
+    let newStatus: 'active' | 'pending' | 'suspended';
+    let action: string;
+    
+    if (partner.status === 'pending') {
+      newStatus = 'active';
+      action = 'onaylandı';
+    } else if (partner.status === 'active') {
+      newStatus = 'suspended';
+      action = 'askıya alındı';
+    } else {
+      newStatus = 'active';
+      action = 'aktif edildi';
+    }
+
+    if (confirm(`${partner.name} partner ${action}. Onaylıyor musunuz?`)) {
+      setPartnerState({ ...partner, status: newStatus });
+      alert(`Partner başarıyla ${action}.`);
+    }
+  };
 
   if (!partner) {
     return (
@@ -931,13 +2053,22 @@ const PartnerDetailPanel: React.FC<PartnerDetailPanelProps> = ({ partnerId, onBa
         </div>
 
         <div className="flex gap-3 mt-6">
-          <button className="px-6 py-3 bg-orange-600 text-white rounded-xl font-bold hover:bg-orange-700">
+          <button 
+            onClick={handleEdit}
+            className="px-6 py-3 bg-orange-600 text-white rounded-xl font-bold hover:bg-orange-700 transition-colors"
+          >
             Düzenle
           </button>
-          <button className="px-6 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700">
+          <button 
+            onClick={handleAddCredit}
+            className="px-6 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-colors"
+          >
             Kredi Ekle
           </button>
-          <button className="px-6 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700">
+          <button 
+            onClick={handleToggleStatus}
+            className="px-6 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-colors"
+          >
             {partner.status === 'active' ? 'Askıya Al' : 'Onayla'}
           </button>
         </div>

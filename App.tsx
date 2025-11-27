@@ -148,22 +148,25 @@ function App() {
             <Route path="/admin/partnerler/:id" element={<AdminDashboard />} />
             <Route path="/admin/talepler" element={<AdminDashboard />} />
             <Route path="/admin/musteri-talepleri" element={<AdminDashboard />} />
+            <Route path="/admin/musteri-talepleri/:id" element={<AdminDashboard />} />
             <Route path="/admin/teklifler" element={<AdminDashboard />} />
+            <Route path="/admin/teklifler/:id" element={<AdminDashboard />} />
             <Route path="/admin/raporlar" element={<AdminDashboard />} />
             <Route path="/admin/belgeler" element={<AdminDashboard />} />
             <Route path="/admin/filo" element={<AdminDashboard />} />
+            <Route path="/admin/filo/:vehicleId" element={<AdminDashboard />} />
             <Route path="/admin/degerlendirmeler" element={<AdminDashboard />} />
+            <Route path="/admin/degerlendirmeler/:id" element={<AdminDashboard />} />
             <Route path="/admin/finansal" element={<AdminDashboard />} />
             <Route path="/admin/krediler" element={<AdminDashboard />} />
             <Route path="/admin/is-gecmisi" element={<AdminDashboard />} />
+            <Route path="/admin/admin-kullanicilari" element={<AdminDashboard />} />
             {/* Kullanıcı ve Partner detayları artık AdminDashboard içinde gösteriliyor */}
-            <Route path="/admin/talep/:id" element={<AdminRequestDetailPage />} />
-            <Route path="/admin/talep/lead/:id" element={<AdminLeadRequestDetailPage />} />
-            <Route path="/admin/talep/alan/:id" element={<AdminAreaRequestDetailPage />} />
-            <Route path="/admin/talep/destek/:id" element={<AdminSupportRequestDetailPage />} />
-            <Route path="/admin/teklif/:id" element={<AdminOfferDetailPage />} />
-            <Route path="/admin/filo/:vehicleId" element={<AdminFleetDetailPage />} />
-            <Route path="/admin/review/:id" element={<AdminReviewDetailPage />} />
+            {/* Talep detayları da AdminDashboard içinde gösteriliyor */}
+            <Route path="/admin/talepler/lead/:id" element={<AdminDashboard />} />
+            <Route path="/admin/talepler/alan/:id" element={<AdminDashboard />} />
+            <Route path="/admin/talepler/destek/:id" element={<AdminDashboard />} />
+            {/* Teklif, Filo ve Review detayları artık AdminDashboard içinde panel olarak gösteriliyor */}
             <Route path="/admin/sistem-loglari" element={<AdminSystemLogs />} />
             
             {/* Special Pages */}

@@ -5,6 +5,7 @@
 
 import React, { useState } from 'react';
 import { Users, Search, Eye } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAdminFilter } from '../hooks/useAdminFilter';
 import StatusBadge from '../ui/StatusBadge';
 import EmptyState from '../ui/EmptyState';
@@ -25,6 +26,7 @@ interface AdminCustomerRequestsTabProps {
 }
 
 const AdminCustomerRequestsTab: React.FC<AdminCustomerRequestsTabProps> = ({ requests }) => {
+  const navigate = useNavigate();
   const [selectedRequest, setSelectedRequest] = useState<CustomerRequestLog | null>(null);
   
   const {
@@ -175,7 +177,7 @@ const AdminCustomerRequestsTab: React.FC<AdminCustomerRequestsTabProps> = ({ req
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <button
-                        onClick={() => setSelectedRequest(request)}
+                        onClick={() => navigate(`/admin/musteri-talepleri/${request.id}`)}
                         className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
                         title="Detayları Görüntüle"
                       >
