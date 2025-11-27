@@ -3146,7 +3146,28 @@ const PartnerDashboard: React.FC = () => {
 
   // ============== YENİ İŞLER TAB ==============
   const renderNewJobsTab = () => {
-    const filteredNewJobs = requests.filter(req => {
+    // Convert B2C requests to JobRequest format
+    const b2cJobRequests: JobRequest[] = customerRequests.map(req => ({
+      id: req.id,
+      serviceType: req.serviceType === 'cekici' ? 'Çekici Hizmeti' :
+                   req.serviceType === 'aku' ? 'Akü Takviyesi' :
+                   req.serviceType === 'lastik' ? 'Lastik Değişimi' :
+                   req.serviceType === 'yakit' ? 'Yakıt Desteği' : 'Yol Yardımı',
+      location: req.fromLocation,
+      dropoffLocation: req.toLocation,
+      distance: '~5 km', // Mock distance
+      price: req.amount || 500, // Estimated
+      timestamp: new Date(req.createdAt).toLocaleString('tr-TR'),
+      customerName: req.customerName || 'B2C Müşteri',
+      vehicleInfo: req.vehicleInfo || 'Belirtilmedi',
+      urgency: 'normal' as const,
+      notes: req.description
+    }));
+
+    // Combine mock requests with B2C requests
+    const allRequests = [...requests, ...b2cJobRequests];
+
+    const filteredNewJobs = allRequests.filter(req => {
       if (newJobsFilter === 'nearest') return parseFloat(req.distance) < 10;
       if (newJobsFilter === 'urgent') return req.urgency === 'high';
       return true;
