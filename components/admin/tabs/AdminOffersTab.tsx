@@ -16,9 +16,10 @@ export interface OfferLog {
 
 interface AdminOffersTabProps {
   data: OfferLog[];
+  onViewOffer: (offer: OfferLog) => void;
 }
 
-const AdminOffersTab: React.FC<AdminOffersTabProps> = ({ data }) => {
+const AdminOffersTab: React.FC<AdminOffersTabProps> = ({ data, onViewOffer }) => {
   const { filtered, searchTerm, setSearchTerm, filterType, setFilterType } = useAdminFilter<OfferLog>(data, {
     searchKeys: ['id', 'partnerName'],
     statusKey: 'status'
@@ -76,7 +77,7 @@ const AdminOffersTab: React.FC<AdminOffersTabProps> = ({ data }) => {
                   <td className="px-6 py-4" role="cell"><StatusBadge type="offer" status={offer.status} /></td>
                   <td className="px-6 py-4 text-sm text-slate-600" role="cell">{offer.createdAt}</td>
                   <td className="px-6 py-4 text-right" role="cell">
-                    <button className="p-2 text-slate-400 hover:text-blue-600" aria-label={`Teklif ${offer.id} detay`}><Eye size={18} /></button>
+                    <button onClick={() => onViewOffer(offer)} className="p-2 text-slate-400 hover:text-blue-600" aria-label={`Teklif ${offer.id} detay`}><Eye size={18} /></button>
                   </td>
                 </tr>
               ))}

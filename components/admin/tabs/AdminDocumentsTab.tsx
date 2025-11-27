@@ -344,8 +344,11 @@ const AdminDocumentsTab: React.FC = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    <div>
-                      <p className="text-sm font-mono text-slate-900">{doc.fileName}</p>
+                    <div 
+                      className="cursor-pointer hover:text-orange-600 transition-colors"
+                      onClick={() => setSelectedDoc(doc)}
+                    >
+                      <p className="text-sm font-mono text-slate-900 underline">{doc.fileName}</p>
                       <p className="text-xs text-slate-500">{doc.fileSize}</p>
                     </div>
                   </td>

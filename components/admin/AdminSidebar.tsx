@@ -21,7 +21,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ activeTab, onSelectTab, onL
           <p className="text-xs text-slate-400 text-center">Admin Panel</p>
         </div>
       </div>
-      <nav className="flex-1 p-4 space-y-2 overflow-y-auto" role="tablist" aria-label="Admin sekmeleri">
+      <nav className="flex-1 p-4 space-y-2 overflow-y-auto scrollbar-hide" role="tablist" aria-label="Admin sekmeleri">
         {adminTabs.filter(t => !t.allowedRoles || t.allowedRoles.includes(role)).map(item => (
           <button
             key={item.id}

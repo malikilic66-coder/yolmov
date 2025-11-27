@@ -3,6 +3,10 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Users, Shield, FileText, Search, Eye, Edit, Trash2, UserPlus, CheckCircle, DollarSign, Mail, Phone, Star } from 'lucide-react';
 import AdminSidebar from './AdminSidebar';
 import AdminHeader from './AdminHeader';
+import UserDetailModal from './modals/UserDetailModal';
+import PartnerDetailModal from './modals/PartnerDetailModal';
+import RequestDetailModal from './modals/RequestDetailModal';
+import OfferDetailModal from './modals/OfferDetailModal';
 import { AdminRole } from '../../types';
 import { useAdminFilter } from './hooks/useAdminFilter';
 import StatusBadge from './ui/StatusBadge';
@@ -64,6 +68,10 @@ const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'partners' | 'requests' | 'offers' | 'reports' | 'documents' | 'fleet' | 'reviews' | 'financial' | 'credits' | 'job-history'>('overview');
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [userTypeFilter, setUserTypeFilter] = useState<'all' | 'customer' | 'partner'>('all');
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [selectedPartner, setSelectedPartner] = useState<Partner | null>(null);
+  const [selectedRequest, setSelectedRequest] = useState<RequestLog | null>(null);
+  const [selectedOffer, setSelectedOffer] = useState<OfferLog | null>(null);
   const currentAdminRole: AdminRole = AdminRole.SUPER_ADMIN;
 
   // URL'ye göre aktif tab'ı ayarla
@@ -191,7 +199,11 @@ const AdminDashboard: React.FC = () => {
                 <h3 className="text-lg font-bold text-slate-900 mb-4">Son Aktiviteler</h3>
                 <div className="space-y-3">
                   {MOCK_REQUESTS.slice(0,5).map(req => (
-                    <div key={req.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
+                    <div 
+                      key={req.id} 
+                      className="flex items-center justify-between p-4 bg-slate-50 rounded-xl hover:bg-slate-100 cursor-pointer transition-colors"
+                      onClick={() => navigate(`/admin/talep/${req.id}`)}
+                    >
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center"><FileText size={20} className="text-blue-600" /></div>
                         <div>
@@ -255,7 +267,10 @@ const AdminDashboard: React.FC = () => {
                       {usersFilter.filtered.map(user => (
                         <tr key={user.id} className="hover:bg-slate-50" role="row">
                           <td className="px-6 py-4" role="cell">
-                            <div>
+                            <div 
+                              className="cursor-pointer hover:text-orange-600 transition-colors"
+                              onClick={() => setSelectedUser(user)}
+                            >
                               <p className="font-bold text-slate-900">{user.name}</p>
                               <p className="text-xs text-slate-500">{user.email}</p>
                             </div>
@@ -265,7 +280,7 @@ const AdminDashboard: React.FC = () => {
                           <td className="px-6 py-4 text-sm text-slate-600" role="cell">{user.joinDate}</td>
                           <td className="px-6 py-4 text-sm font-bold text-slate-900" role="cell">₺{(user.totalSpent || user.totalEarned || 0).toLocaleString()}</td>
                           <td className="px-6 py-4 text-right" role="cell">
-                            <button onClick={() => navigate(`/admin/kullanici/${user.id}`)} className="p-2 text-slate-400 hover:text-blue-600" aria-label={`Kullanıcı ${user.id} görüntüle`}><Eye size={18} /></button>
+                            <button onClick={() => setSelectedUser(user)} className="p-2 text-slate-400 hover:text-blue-600" aria-label={`Kullanıcı ${user.id} görüntüle`}><Eye size={18} /></button>
                             <button className="p-2 text-slate-400 hover:text-orange-600" aria-label={`Kullanıcı ${user.id} düzenle`}><Edit size={18} /></button>
                             <button className="p-2 text-slate-400 hover:text-red-600" aria-label={`Kullanıcı ${user.id} sil`}><Trash2 size={18} /></button>
                           </td>
@@ -324,7 +339,10 @@ const AdminDashboard: React.FC = () => {
                           <td className="px-6 py-4" role="cell">
                             <div className="flex items-center gap-3">
                               <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center"><Shield size={20} className="text-orange-600" /></div>
-                              <div>
+                              <div 
+                                className="cursor-pointer hover:text-orange-600 transition-colors"
+                                onClick={() => setSelectedPartner(partner)}
+                              >
                                 <p className="font-bold text-slate-900">{partner.name}</p>
                                 <p className="text-xs text-slate-500">{partner.id}</p>
                               </div>
@@ -348,7 +366,7 @@ const AdminDashboard: React.FC = () => {
                           </td>
                           <td className="px-6 py-4" role="cell"><StatusBadge type="partner" status={partner.status} /></td>
                           <td className="px-6 py-4 text-right" role="cell">
-                            <button onClick={() => navigate(`/admin/partner/${partner.id}`)} className="p-2 text-slate-400 hover:text-blue-600" aria-label={`Partner ${partner.id} görüntüle`}><Eye size={18} /></button>
+                            <button onClick={() => setSelectedPartner(partner)} className="p-2 text-slate-400 hover:text-blue-600" aria-label={`Partner ${partner.id} görüntüle`}><Eye size={18} /></button>
                             <button className="p-2 text-slate-400 hover:text-orange-600" aria-label={`Partner ${partner.id} düzenle`}><Edit size={18} /></button>
                             <button className="p-2 text-slate-400 hover:text-red-600" aria-label={`Partner ${partner.id} sil`}><Trash2 size={18} /></button>
                           </td>
@@ -411,7 +429,7 @@ const AdminDashboard: React.FC = () => {
                           <td className="px-6 py-4" role="cell"><StatusBadge type="request" status={req.status} /></td>
                           <td className="px-6 py-4 text-sm text-slate-600" role="cell">{req.createdAt}</td>
                           <td className="px-6 py-4 text-sm font-bold text-slate-900" role="cell">{req.amount ? `₺${req.amount}` : '-'}</td>
-                          <td className="px-6 py-4 text-right" role="cell"><button onClick={() => navigate(`/admin/talep/${req.id}`)} className="p-2 text-slate-400 hover:text-blue-600" aria-label={`Talep ${req.id} görüntüle`}><Eye size={18} /></button></td>
+                          <td className="px-6 py-4 text-right" role="cell"><button onClick={() => setSelectedRequest(req)} className="p-2 text-slate-400 hover:text-blue-600" aria-label={`Talep ${req.id} görüntüle`}><Eye size={18} /></button></td>
                         </tr>
                       ))}
                     </tbody>
@@ -422,7 +440,7 @@ const AdminDashboard: React.FC = () => {
           )}
 
           {activeTab === 'offers' && (
-            <Suspense fallback={<LoadingSkeleton rows={6} />}><AdminOffersTab data={MOCK_OFFERS} /></Suspense>
+            <Suspense fallback={<LoadingSkeleton rows={6} />}><AdminOffersTab data={MOCK_OFFERS} onViewOffer={setSelectedOffer} /></Suspense>
           )}
           {activeTab === 'reports' && (
             <Suspense fallback={<LoadingSkeleton rows={6} />}><AdminReportsTab /></Suspense>
@@ -447,6 +465,12 @@ const AdminDashboard: React.FC = () => {
           )}
         </main>
       </div>
+
+      {/* Modals */}
+      <UserDetailModal user={selectedUser} onClose={() => setSelectedUser(null)} />
+      <PartnerDetailModal partner={selectedPartner} onClose={() => setSelectedPartner(null)} />
+      <RequestDetailModal request={selectedRequest} onClose={() => setSelectedRequest(null)} />
+      <OfferDetailModal offer={selectedOffer} onClose={() => setSelectedOffer(null)} />
     </div>
   );
 };
