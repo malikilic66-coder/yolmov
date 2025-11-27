@@ -3146,8 +3146,8 @@ const PartnerDashboard: React.FC = () => {
 
   // ============== YENİ İŞLER TAB ==============
   const renderNewJobsTab = () => {
-    // Convert B2C requests to JobRequest format
-    const b2cJobRequests: JobRequest[] = customerRequests.map(req => ({
+    // Convert B2C requests to JobRequest format, keep reference to original
+    const b2cJobRequests: (JobRequest & { _originalRequest?: Request })[] = customerRequests.map(req => ({
       id: req.id,
       serviceType: req.serviceType === 'cekici' ? 'Çekici Hizmeti' :
                    req.serviceType === 'aku' ? 'Akü Takviyesi' :
@@ -3161,17 +3161,30 @@ const PartnerDashboard: React.FC = () => {
       customerName: req.customerName || 'B2C Müşteri',
       vehicleInfo: req.vehicleInfo || 'Belirtilmedi',
       urgency: 'normal' as const,
-      notes: req.description
+      notes: req.description,
+      _originalRequest: req // Keep reference to original B2C request
     }));
 
     // Combine mock requests with B2C requests
-    const allRequests = [...requests, ...b2cJobRequests];
+    const allRequests: (JobRequest & { _originalRequest?: Request })[] = [...requests, ...b2cJobRequests];
 
     const filteredNewJobs = allRequests.filter(req => {
       if (newJobsFilter === 'nearest') return parseFloat(req.distance) < 10;
       if (newJobsFilter === 'urgent') return req.urgency === 'high';
       return true;
     });
+
+    // Handler for offer button - routes to correct modal based on job type
+    const handleOfferClick = (job: JobRequest & { _originalRequest?: Request }) => {
+      if (job._originalRequest) {
+        // B2C request - use customer offer modal
+        handleOpenCustomerOfferModal(job._originalRequest);
+      } else {
+        // Mock job - use regular quote modal
+        setSelectedJobForQuote(job);
+        setQuotePrice(job.estimatedPrice?.toString() || '');
+      }
+    };
 
     return (
       <div className="p-4 md:p-6 space-y-6">
@@ -3221,7 +3234,7 @@ const PartnerDashboard: React.FC = () => {
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
                     <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                      isUnlocked ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'
+                      isUnlocked ? 'bg-green-100 text-green-600' : job._originalRequest ? 'bg-orange-100 text-orange-600' : 'bg-blue-100 text-blue-600'
                     }`}>
                       {job.serviceType.includes('Çekici') ? <Truck size={24} /> : <Wrench size={24} />}
                     </div>
@@ -3230,11 +3243,18 @@ const PartnerDashboard: React.FC = () => {
                       <p className="text-xs text-slate-500">#{job.id}</p>
                     </div>
                   </div>
-                  {job.urgency === 'high' && (
-                    <span className="bg-red-100 text-red-600 text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1">
-                      <AlertTriangle size={12} /> ACİL
-                    </span>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {job._originalRequest && (
+                      <span className="bg-orange-100 text-orange-600 text-xs font-bold px-2 py-1 rounded-full">
+                        B2C
+                      </span>
+                    )}
+                    {job.urgency === 'high' && (
+                      <span className="bg-red-100 text-red-600 text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1">
+                        <AlertTriangle size={12} /> ACİL
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {/* Location */}
@@ -3297,10 +3317,7 @@ const PartnerDashboard: React.FC = () => {
                     </div>
                   ) : (
                     <button
-                      onClick={() => {
-                        setSelectedJobForQuote(job);
-                        setQuotePrice(job.estimatedPrice?.toString() || '');
-                      }}
+                      onClick={() => handleOfferClick(job)}
                       className="flex-1 py-2 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition-all flex items-center justify-center gap-2"
                     >
                       <Send size={16} /> Teklif Ver
