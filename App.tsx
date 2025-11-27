@@ -36,6 +36,9 @@ const AdminRequestDetailPage = React.lazy(() => import('./components/admin/pages
 const AdminOfferDetailPage = React.lazy(() => import('./components/admin/pages/AdminOfferDetailPage'));
 const AdminFleetDetailPage = React.lazy(() => import('./components/admin/pages/AdminFleetDetailPage'));
 const AdminReviewDetailPage = React.lazy(() => import('./components/admin/AdminReviewDetailPage'));
+const AdminLeadRequestDetailPage = React.lazy(() => import('./components/admin/pages/AdminLeadRequestDetailPage'));
+const AdminAreaRequestDetailPage = React.lazy(() => import('./components/admin/pages/AdminAreaRequestDetailPage'));
+const AdminSupportRequestDetailPage = React.lazy(() => import('./components/admin/pages/AdminSupportRequestDetailPage'));
 const NotificationTestPage = React.lazy(() => import('./components/NotificationTestPage'));
 const PrivacyPolicyPage = React.lazy(() => import('./components/PrivacyPolicyPage'));
 const TermsOfServicePage = React.lazy(() => import('./components/TermsOfServicePage'));
@@ -142,6 +145,7 @@ function App() {
             <Route path="/admin/kullanicilar" element={<AdminDashboard />} />
             <Route path="/admin/partnerler" element={<AdminDashboard />} />
             <Route path="/admin/talepler" element={<AdminDashboard />} />
+            <Route path="/admin/musteri-talepleri" element={<AdminDashboard />} />
             <Route path="/admin/teklifler" element={<AdminDashboard />} />
             <Route path="/admin/raporlar" element={<AdminDashboard />} />
             <Route path="/admin/belgeler" element={<AdminDashboard />} />
@@ -153,6 +157,9 @@ function App() {
             <Route path="/admin/kullanici/:id" element={<AdminUserDetailPage />} />
             <Route path="/admin/partner/:id" element={<AdminPartnerDetailPage />} />
             <Route path="/admin/talep/:id" element={<AdminRequestDetailPage />} />
+            <Route path="/admin/talep/lead/:id" element={<AdminLeadRequestDetailPage />} />
+            <Route path="/admin/talep/alan/:id" element={<AdminAreaRequestDetailPage />} />
+            <Route path="/admin/talep/destek/:id" element={<AdminSupportRequestDetailPage />} />
             <Route path="/admin/teklif/:id" element={<AdminOfferDetailPage />} />
             <Route path="/admin/filo/:vehicleId" element={<AdminFleetDetailPage />} />
             <Route path="/admin/review/:id" element={<AdminReviewDetailPage />} />

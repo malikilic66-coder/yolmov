@@ -20,6 +20,7 @@ const AdminFinancialTab = lazy(() => import('./tabs/AdminFinancialTab'));
 const AdminCreditsTab = lazy(() => import('./tabs/AdminCreditsTab'));
 const AdminJobHistoryTab = lazy(() => import('./tabs/AdminJobHistoryTab'));
 const AdminRequestsTab = lazy(() => import('./tabs/AdminRequestsTab'));
+const AdminCustomerRequestsTab = lazy(() => import('./tabs/AdminCustomerRequestsTab'));
 
 import type { Vehicle } from './tabs/AdminFleetTab';
 
@@ -35,6 +36,7 @@ interface Partner {
 // Müşteri teklif talepleri (B2C) - ayrı sekmede
 interface CustomerRequestLog {
   id: string; customerId: string; customerName: string; serviceType: string;
+  location: string;
   status: 'open' | 'matched' | 'completed' | 'cancelled'; createdAt: string; amount?: number;
 }
 
@@ -110,9 +112,9 @@ const MOCK_PARTNERS: Partner[] = [
 ];
 // Müşteri teklif talepleri (ayrı sekmede gösterilecek)
 const MOCK_CUSTOMER_REQUESTS: CustomerRequestLog[] = [
-  { id: 'CREQ-001', customerId: 'USR-001', customerName: 'Ahmet Yılmaz', serviceType: 'cekici', status: 'completed', createdAt: '2024-11-22 14:30', amount: 850 },
-  { id: 'CREQ-002', customerId: 'USR-002', customerName: 'Selin Kaya', serviceType: 'aku', status: 'matched', createdAt: '2024-11-23 09:15', amount: 400 },
-  { id: 'CREQ-003', customerId: 'USR-001', customerName: 'Ahmet Yılmaz', serviceType: 'lastik', status: 'open', createdAt: '2024-11-24 11:00' },
+  { id: 'CREQ-001', customerId: 'USR-001', customerName: 'Ahmet Yılmaz', serviceType: 'cekici', location: 'Kadıköy, İstanbul', status: 'completed', createdAt: '2024-11-22 14:30', amount: 850 },
+  { id: 'CREQ-002', customerId: 'USR-002', customerName: 'Selin Kaya', serviceType: 'aku', location: 'Beşiktaş, İstanbul', status: 'matched', createdAt: '2024-11-23 09:15', amount: 400 },
+  { id: 'CREQ-003', customerId: 'USR-001', customerName: 'Ahmet Yılmaz', serviceType: 'lastik', location: 'Üsküdar, İstanbul', status: 'open', createdAt: '2024-11-24 11:00' },
 ];
 
 // Partner lead satın alma talepleri
@@ -282,7 +284,7 @@ const MOCK_OFFERS: OfferLog[] = [
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'partners' | 'requests' | 'offers' | 'reports' | 'documents' | 'fleet' | 'reviews' | 'financial' | 'credits' | 'job-history'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'partners' | 'requests' | 'customer-requests' | 'offers' | 'reports' | 'documents' | 'fleet' | 'reviews' | 'financial' | 'credits' | 'job-history'>('overview');
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [userTypeFilter, setUserTypeFilter] = useState<'all' | 'customer' | 'partner'>('all');
   const [selectedRequest, setSelectedRequest] = useState<CustomerRequestLog | null>(null);
@@ -297,6 +299,7 @@ const AdminDashboard: React.FC = () => {
       '/admin/kullanicilar': 'users',
       '/admin/partnerler': 'partners',
       '/admin/talepler': 'requests',
+      '/admin/musteri-talepleri': 'customer-requests',
       '/admin/teklifler': 'offers',
       '/admin/raporlar': 'reports',
       '/admin/belgeler': 'documents',
@@ -319,6 +322,7 @@ const AdminDashboard: React.FC = () => {
       'users': '/admin/kullanicilar',
       'partners': '/admin/partnerler',
       'requests': '/admin/talepler',
+      'customer-requests': '/admin/musteri-talepleri',
       'offers': '/admin/teklifler',
       'reports': '/admin/raporlar',
       'documents': '/admin/belgeler',
@@ -610,6 +614,12 @@ const AdminDashboard: React.FC = () => {
                 areaRequests={MOCK_AREA_REQUESTS}
                 supportRequests={MOCK_SUPPORT_REQUESTS}
               />
+            </Suspense>
+          )}
+
+          {activeTab === 'customer-requests' && (
+            <Suspense fallback={<LoadingSkeleton rows={6} />}>
+              <AdminCustomerRequestsTab requests={MOCK_CUSTOMER_REQUESTS} />
             </Suspense>
           )}
 
