@@ -15,12 +15,36 @@ import {
 } from 'lucide-react';
 import { JobRequest, Request } from '../types';
 import { MOCK_PARTNER_REQUESTS, CITIES_WITH_DISTRICTS } from '../constants';
-import { createOffer, getRequestsByCustomer } from '../services/mockApi';
+import { 
+  createOffer, 
+  getRequestsByCustomer, 
+  submitObjection, 
+  uploadDocument, 
+  createSupportTicket,
+  getReviewsByPartner,
+  getDocumentsByPartner,
+  getTicketsByPartner,
+  getVehiclesByPartner,
+  addVehicle,
+  updateVehicle,
+  deleteVehicle,
+  getPartnerCredits,
+  purchaseCredits,
+  getCreditTransactions,
+  getRoutesByPartner,
+  createRoute,
+  deleteRoute,
+  getJobsByPartner,
+  initializeMockData
+} from '../services/mockApi';
 import { motion, AnimatePresence } from 'framer-motion';
 import PartnerOfferHistory from './PartnerOfferHistory';
 import PartnerPayments from './PartnerPayments';
 import PartnerDocuments from './PartnerDocuments';
 import { compressImage, isImageFile, createPreviewUrl } from '../utils/imageCompression';
+
+// Initialize mock data on component load
+initializeMockData();
 
 // MOCK HISTORY DATA
 const MOCK_HISTORY = [
@@ -305,8 +329,34 @@ const PartnerDashboard: React.FC = () => {
         console.log(`📄 Belge sıkıştırıldı: ${result.compressionRatio.toFixed(1)}% küçültüldü`);
       }
       
-      // Simüle upload
-      setTimeout(() => {
+      // Base64'e dönüştür
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64Data = reader.result as string;
+        
+        // Belge türü mapping
+        const docTypeMap: Record<string, 'license' | 'insurance' | 'registration' | 'tax' | 'identity'> = {
+          'K1/K2 Belgesi': 'license',
+          'K1 Belgesi': 'license',
+          'K2 Belgesi': 'license',
+          'Kasko Poliçesi': 'insurance',
+          'Trafik Sigortası': 'insurance',
+          'Araç Ruhsatı': 'registration',
+          'Vergi Levhası': 'tax',
+          'Kimlik Fotokopisi': 'identity',
+          'Ehliyet Fotokopisi': 'identity'
+        };
+        
+        // Mock API ile kaydet
+        uploadDocument({
+          partnerId: currentPartner?.id || 'P001',
+          partnerName: currentPartner?.name || 'Partner',
+          type: docTypeMap[selectedDocType] || 'registration',
+          fileName: finalFile.name,
+          fileSize: `${(finalFile.size / 1024 / 1024).toFixed(2)} MB`,
+          fileData: base64Data
+        });
+        
         alert(`✅ ${selectedDocType} başarıyla yüklendi!\n\nDosya: ${finalFile.name}\nBoyut: ${(finalFile.size / 1024 / 1024).toFixed(2)} MB\n\nBelgeniz admin onayına gönderildi.`);
         setUploadingDocument(false);
         setShowDocumentUploadModal(false);
@@ -314,7 +364,14 @@ const PartnerDashboard: React.FC = () => {
         if (documentInputRef.current) {
           documentInputRef.current.value = '';
         }
-      }, 1500);
+      };
+      
+      reader.onerror = () => {
+        setDocumentUploadError('Dosya okuma hatası oluştu.');
+        setUploadingDocument(false);
+      };
+      
+      reader.readAsDataURL(finalFile);
     } catch (error) {
       console.error('Belge yükleme hatası:', error);
       setDocumentUploadError('Belge yüklenirken hata oluştu. Lütfen tekrar deneyin.');
@@ -540,19 +597,35 @@ const PartnerDashboard: React.FC = () => {
       return;
     }
     
-    // Burada backend'e gönderilecek
-    console.log('İtiraz Gönderildi:', {
-      reviewId: selectedReviewForObjection?.id,
-      jobId: selectedReviewForObjection?.jobId,
-      reason: objectionReason,
-      details: objectionDetails
-    });
+    if (!selectedReviewForObjection) {
+      alert('Değerlendirme seçilmedi.');
+      return;
+    }
     
-    alert('✅ İtirazınız başarıyla gönderildi. En kısa sürede incelenecektir.');
-    setShowObjectionPage(false);
-    setSelectedReviewForObjection(null);
-    setObjectionReason('');
-    setObjectionDetails('');
+    // Partner bilgilerini al
+    const partnerId = 'PTR-001'; // TODO: Gerçek partner ID'si session'dan alınacak
+    const partnerName = 'Demo Partner';
+    
+    try {
+      // mockApi'ye gönder
+      const newObjection = submitObjection({
+        reviewId: selectedReviewForObjection.id,
+        partnerId,
+        partnerName,
+        reason: `${objectionReason}: ${objectionDetails}`
+      });
+      
+      console.log('✅ İtiraz Gönderildi:', newObjection);
+      
+      alert('✅ İtirazınız başarıyla gönderildi. En kısa sürede incelenecektir.');
+      setShowObjectionPage(false);
+      setSelectedReviewForObjection(null);
+      setObjectionReason('');
+      setObjectionDetails('');
+    } catch (error) {
+      console.error('❌ İtiraz gönderme hatası:', error);
+      alert('İtiraz gönderilirken bir hata oluştu. Lütfen tekrar deneyin.');
+    }
   };
 
   // Fotoğraf yükleme ve sıkıştırma fonksiyonları
@@ -2955,17 +3028,19 @@ const PartnerDashboard: React.FC = () => {
                       alert('Lütfen tüm zorunlu alanları doldurun.');
                       return;
                     }
-                    console.log('Yeni Destek Talebi:', {
-                      category: ticketCategory,
+                    // Mock API ile destek talebi oluştur
+                    createSupportTicket({
+                      partnerId: currentPartner?.id || 'P001',
+                      partnerName: currentPartner?.name || 'Partner',
+                      category: ticketCategory as 'technical' | 'payment' | 'general' | 'complaint',
                       subject: ticketSubject,
-                      description: ticketDescription,
-                      timestamp: new Date().toISOString()
+                      description: ticketDescription
                     });
                     setShowNewTicketPage(false);
                     setTicketSubject('');
                     setTicketCategory('');
                     setTicketDescription('');
-                    alert('Mesajınız başarılı bir şekilde alındı.');
+                    alert('Destek talebiniz başarıyla oluşturuldu.');
                   }}
                   disabled={!ticketCategory || !ticketSubject.trim() || !ticketDescription.trim()}
                   className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"

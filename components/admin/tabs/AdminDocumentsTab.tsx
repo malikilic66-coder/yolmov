@@ -3,100 +3,12 @@
  * Tüm partnerlerin belge onay/red yönetimi
  */
 
-import React, { useState } from 'react';
-import { Search, Eye, CheckCircle, XCircle, Download, Calendar, FileText, AlertTriangle, Filter, User } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, Eye, CheckCircle, XCircle, Download, Calendar, FileText, AlertTriangle, Filter, User, RefreshCw } from 'lucide-react';
 import { useAdminFilter } from '../hooks/useAdminFilter';
 import StatusBadge from '../ui/StatusBadge';
 import EmptyState from '../ui/EmptyState';
-
-interface PartnerDocument {
-  id: string;
-  partnerId: string;
-  partnerName: string;
-  documentType: 'license' | 'insurance' | 'registration' | 'tax' | 'identity';
-  fileName: string;
-  fileSize: string;
-  uploadDate: string;
-  expiryDate?: string;
-  status: 'pending' | 'approved' | 'rejected';
-  rejectionReason?: string;
-  reviewedBy?: string;
-  reviewedAt?: string;
-}
-
-// MOCK DATA - Gerçek backend entegrasyonunda API'den gelecek
-const MOCK_DOCUMENTS: PartnerDocument[] = [
-  {
-    id: 'DOC-001',
-    partnerId: 'PTR-001',
-    partnerName: 'Yılmaz Oto Kurtarma',
-    documentType: 'license',
-    fileName: 'surucu_belgesi_2024.pdf',
-    fileSize: '1.2 MB',
-    uploadDate: '2024-11-20 14:30',
-    expiryDate: '2028-05-15',
-    status: 'pending',
-  },
-  {
-    id: 'DOC-002',
-    partnerId: 'PTR-001',
-    partnerName: 'Yılmaz Oto Kurtarma',
-    documentType: 'insurance',
-    fileName: 'kasko_policesi.pdf',
-    fileSize: '800 KB',
-    uploadDate: '2024-11-19 10:15',
-    expiryDate: '2025-12-31',
-    status: 'approved',
-    reviewedBy: 'Admin User',
-    reviewedAt: '2024-11-19 11:00',
-  },
-  {
-    id: 'DOC-003',
-    partnerId: 'PTR-002',
-    partnerName: 'Hızlı Yol Yardım',
-    documentType: 'registration',
-    fileName: 'arac_ruhsati.jpg',
-    fileSize: '650 KB',
-    uploadDate: '2024-11-18 16:45',
-    status: 'rejected',
-    rejectionReason: 'Belge okunaklı değil, lütfen daha net bir görsel yükleyin',
-    reviewedBy: 'Support Admin',
-    reviewedAt: '2024-11-18 17:20',
-  },
-  {
-    id: 'DOC-004',
-    partnerId: 'PTR-003',
-    partnerName: 'Mega Çekici',
-    documentType: 'tax',
-    fileName: 'vergi_levhasi.pdf',
-    fileSize: '400 KB',
-    uploadDate: '2024-11-22 09:30',
-    status: 'pending',
-  },
-  {
-    id: 'DOC-005',
-    partnerId: 'PTR-002',
-    partnerName: 'Hızlı Yol Yardım',
-    documentType: 'identity',
-    fileName: 'kimlik_fotokopisi.jpg',
-    fileSize: '550 KB',
-    uploadDate: '2024-11-21 11:20',
-    status: 'approved',
-    reviewedBy: 'Admin User',
-    reviewedAt: '2024-11-21 12:00',
-  },
-  {
-    id: 'DOC-006',
-    partnerId: 'PTR-003',
-    partnerName: 'Mega Çekici',
-    documentType: 'insurance',
-    fileName: 'sorumluluk_sigortasi.pdf',
-    fileSize: '1.5 MB',
-    uploadDate: '2024-11-23 08:15',
-    expiryDate: '2025-11-30',
-    status: 'pending',
-  },
-];
+import { getAllDocuments, updateDocumentStatus, type PartnerDocument } from '../../../services/mockApi';
 
 const DOCUMENT_TYPE_LABELS: Record<string, string> = {
   license: 'Sürücü Belgesi',
@@ -106,17 +18,37 @@ const DOCUMENT_TYPE_LABELS: Record<string, string> = {
   identity: 'Kimlik Belgesi',
 };
 
+// Demo data for seeding if empty
+const INITIAL_DOCUMENTS: Omit<PartnerDocument, 'id' | 'uploadDate' | 'status'>[] = [
+  { partnerId: 'PTR-001', partnerName: 'Yılmaz Oto Kurtarma', type: 'license', fileName: 'surucu_belgesi_2024.pdf', fileSize: '1.2 MB', expiryDate: '2028-05-15' },
+  { partnerId: 'PTR-001', partnerName: 'Yılmaz Oto Kurtarma', type: 'insurance', fileName: 'kasko_policesi.pdf', fileSize: '800 KB', expiryDate: '2025-12-31' },
+  { partnerId: 'PTR-002', partnerName: 'Hızlı Yol Yardım', type: 'registration', fileName: 'arac_ruhsati.jpg', fileSize: '650 KB' },
+  { partnerId: 'PTR-003', partnerName: 'Mega Çekici', type: 'tax', fileName: 'vergi_levhasi.pdf', fileSize: '400 KB' },
+  { partnerId: 'PTR-002', partnerName: 'Hızlı Yol Yardım', type: 'identity', fileName: 'kimlik_fotokopisi.jpg', fileSize: '550 KB' },
+  { partnerId: 'PTR-003', partnerName: 'Mega Çekici', type: 'insurance', fileName: 'sorumluluk_sigortasi.pdf', fileSize: '1.5 MB', expiryDate: '2025-11-30' },
+];
+
 const AdminDocumentsTab: React.FC = () => {
   const [selectedDoc, setSelectedDoc] = useState<PartnerDocument | null>(null);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
-  const [documents, setDocuments] = useState(MOCK_DOCUMENTS);
+  const [documents, setDocuments] = useState<PartnerDocument[]>([]);
   const [selectedPartner, setSelectedPartner] = useState<string>('all');
   const [dateFilter, setDateFilter] = useState<string>('all');
   const [documentTypeFilter, setDocumentTypeFilter] = useState<string>('all');
 
+  // Load documents from mockApi on mount
+  useEffect(() => {
+    loadDocuments();
+  }, []);
+
+  const loadDocuments = () => {
+    const docs = getAllDocuments();
+    setDocuments(docs);
+  };
+
   // Unique partner listesi
-  const uniquePartners = Array.from(new Set(MOCK_DOCUMENTS.map(d => d.partnerName))).sort();
+  const uniquePartners = Array.from(new Set(documents.map(d => d.partnerName))).sort();
 
   // Filtrele
   let filteredDocs = documents;
@@ -128,7 +60,7 @@ const AdminDocumentsTab: React.FC = () => {
 
   // Belge tipi filtresi
   if (documentTypeFilter !== 'all') {
-    filteredDocs = filteredDocs.filter(d => d.documentType === documentTypeFilter);
+    filteredDocs = filteredDocs.filter(d => d.type === documentTypeFilter);
   }
 
   // Tarih filtresi
@@ -156,6 +88,17 @@ const AdminDocumentsTab: React.FC = () => {
     { searchKeys: ['partnerName', 'fileName'], statusKey: 'status' }
   );
 
+  const handleApprove = (doc: PartnerDocument) => {
+    updateDocumentStatus(doc.id, 'approved');
+    loadDocuments();
+    setSelectedDoc(null);
+  };
+
+  const openRejectModal = (doc: PartnerDocument) => {
+    setSelectedDoc(doc);
+    setShowRejectModal(true);
+  };
+
   const stats = {
     total: documents.length,
     pending: documents.filter(d => d.status === 'pending').length,
@@ -163,28 +106,13 @@ const AdminDocumentsTab: React.FC = () => {
     rejected: documents.filter(d => d.status === 'rejected').length,
   };
 
-  const handleApprove = (doc: PartnerDocument) => {
-    setDocuments(prev => prev.map(d => 
-      d.id === doc.id 
-        ? { ...d, status: 'approved' as const, reviewedBy: 'Admin User', reviewedAt: new Date().toISOString() }
-        : d
-    ));
-    setSelectedDoc(null);
-  };
-
-  const handleReject = (doc: PartnerDocument) => {
-    setSelectedDoc(doc);
-    setShowRejectModal(true);
-  };
-
   const submitRejection = () => {
     if (!selectedDoc || !rejectionReason.trim()) return;
     
-    setDocuments(prev => prev.map(d => 
-      d.id === selectedDoc.id 
-        ? { ...d, status: 'rejected' as const, rejectionReason, reviewedBy: 'Admin User', reviewedAt: new Date().toISOString() }
-        : d
-    ));
+    // mockApi ile belge durumunu güncelle
+    updateDocumentStatus(selectedDoc.id, 'rejected', rejectionReason);
+    loadDocuments();
+    
     setShowRejectModal(false);
     setRejectionReason('');
     setSelectedDoc(null);
@@ -340,7 +268,7 @@ const AdminDocumentsTab: React.FC = () => {
                   </td>
                   <td className="px-6 py-4">
                     <span className="text-sm font-medium text-slate-700">
-                      {DOCUMENT_TYPE_LABELS[doc.documentType]}
+                      {DOCUMENT_TYPE_LABELS[doc.type]}
                     </span>
                   </td>
                   <td className="px-6 py-4">
@@ -382,7 +310,10 @@ const AdminDocumentsTab: React.FC = () => {
                             <CheckCircle size={18} />
                           </button>
                           <button
-                            onClick={() => handleReject(doc)}
+                            onClick={() => {
+                              setSelectedDoc(doc);
+                              setShowRejectModal(true);
+                            }}
                             className="p-2 text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
                             title="Reddet"
                           >
@@ -419,7 +350,7 @@ const AdminDocumentsTab: React.FC = () => {
                 </div>
                 <div className="bg-slate-50 rounded-xl p-4">
                   <p className="text-xs text-slate-500 mb-1">Belge Tipi</p>
-                  <p className="font-bold text-slate-900">{DOCUMENT_TYPE_LABELS[selectedDoc.documentType]}</p>
+                  <p className="font-bold text-slate-900">{DOCUMENT_TYPE_LABELS[selectedDoc.type]}</p>
                 </div>
               </div>
 
@@ -470,7 +401,7 @@ const AdminDocumentsTab: React.FC = () => {
               {selectedDoc.status === 'pending' && (
                 <div className="flex gap-3 pt-4">
                   <button
-                    onClick={() => handleReject(selectedDoc)}
+                    onClick={() => setShowRejectModal(true)}
                     className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 flex items-center justify-center gap-2"
                   >
                     <XCircle size={18} />
@@ -496,7 +427,7 @@ const AdminDocumentsTab: React.FC = () => {
           <div className="bg-white rounded-3xl p-6 max-w-lg w-full">
             <h2 className="text-2xl font-bold text-slate-900 mb-4">Belge Reddetme</h2>
             <p className="text-sm text-slate-600 mb-4">
-              <strong>{selectedDoc.partnerName}</strong> firmasının <strong>{DOCUMENT_TYPE_LABELS[selectedDoc.documentType]}</strong> belgesini neden reddediyorsunuz?
+              <strong>{selectedDoc.partnerName}</strong> firmasının <strong>{DOCUMENT_TYPE_LABELS[selectedDoc.type]}</strong> belgesini neden reddediyorsunuz?
             </p>
             <textarea
               className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-500 outline-none resize-none"

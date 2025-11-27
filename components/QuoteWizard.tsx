@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { CITIES_WITH_DISTRICTS } from '../constants';
 import { compressImage, isImageFile } from '../utils/imageCompression';
+import { createMockRequest } from '../services/mockApi';
 
 const STEPS = [
   { id: 1, title: 'Araç Bilgileri' },
@@ -136,12 +137,67 @@ const QuoteWizard: React.FC = () => {
   const handleNext = () => {
     if (validateStep(currentStep)) {
       if (currentStep === 4) {
-        // Simulate submission
+        // Submit to mockApi
         setIsSubmitting(true);
-        setTimeout(() => {
+        
+        // Get customer ID
+        const customerId = customer?.id || `GUEST-${Date.now()}`;
+        
+        // Build service type from formData
+        const serviceTypeMap: Record<string, string> = {
+          'towing': 'cekici',
+          'battery': 'aku',
+          'fuel': 'yakit',
+          'tire': 'lastik',
+          'locksmith': 'anahtar'
+        };
+        
+        // Build description
+        const description = [
+          `${formData.make} ${formData.model} (${formData.year})`,
+          formData.condition === 'broken' ? 'Arızalı/Kazalı' : 'Çalışır durumda',
+          formData.note || ''
+        ].filter(Boolean).join(' - ');
+        
+        // Build from location
+        const fromLocation = [
+          formData.fromAddress,
+          formData.fromDistrict,
+          formData.fromCity
+        ].filter(Boolean).join(', ');
+        
+        // Build to location (if exists)
+        const toLocation = formData.toCity ? [
+          formData.toAddress,
+          formData.toDistrict,
+          formData.toCity
+        ].filter(Boolean).join(', ') : undefined;
+        
+        // Vehicle info
+        const vehicleInfo = `${formData.make} ${formData.model} ${formData.year}`;
+        
+        try {
+          // Create request in mockApi
+          const newRequest = createMockRequest({
+            customerId,
+            serviceType: serviceTypeMap[formData.serviceType] || 'cekici',
+            description,
+            fromLocation,
+            toLocation,
+            vehicleInfo
+          });
+          
+          console.log('✅ Teklif talebi oluşturuldu:', newRequest);
+          
+          setTimeout(() => {
+            setIsSubmitting(false);
+            setCurrentStep(5);
+          }, 1000);
+        } catch (error) {
+          console.error('❌ Talep oluşturma hatası:', error);
           setIsSubmitting(false);
-          setCurrentStep(5);
-        }, 1500);
+          alert('Talep oluşturulurken bir hata oluştu. Lütfen tekrar deneyin.');
+        }
       } else {
         setCurrentStep(currentStep + 1);
       }
