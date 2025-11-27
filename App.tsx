@@ -35,6 +35,7 @@ const AdminPartnerDetailPage = React.lazy(() => import('./components/admin/pages
 const AdminRequestDetailPage = React.lazy(() => import('./components/admin/pages/AdminRequestDetailPage'));
 const AdminOfferDetailPage = React.lazy(() => import('./components/admin/pages/AdminOfferDetailPage'));
 const AdminFleetDetailPage = React.lazy(() => import('./components/admin/pages/AdminFleetDetailPage'));
+const AdminReviewDetailPage = React.lazy(() => import('./components/admin/AdminReviewDetailPage'));
 const NotificationTestPage = React.lazy(() => import('./components/NotificationTestPage'));
 const PrivacyPolicyPage = React.lazy(() => import('./components/PrivacyPolicyPage'));
 const TermsOfServicePage = React.lazy(() => import('./components/TermsOfServicePage'));
@@ -154,6 +155,7 @@ function App() {
             <Route path="/admin/talep/:id" element={<AdminRequestDetailPage />} />
             <Route path="/admin/teklif/:id" element={<AdminOfferDetailPage />} />
             <Route path="/admin/filo/:vehicleId" element={<AdminFleetDetailPage />} />
+            <Route path="/admin/review/:id" element={<AdminReviewDetailPage />} />
             <Route path="/admin/sistem-loglari" element={<AdminSystemLogs />} />
             
             {/* Special Pages */}

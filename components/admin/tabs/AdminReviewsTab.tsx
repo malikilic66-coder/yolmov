@@ -4,6 +4,7 @@
  */
 
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Search, Star, ThumbsDown, AlertTriangle, Eye, CheckCircle, XCircle, User, Calendar } from 'lucide-react';
 import { useAdminFilter } from '../hooks/useAdminFilter';
 import EmptyState from '../ui/EmptyState';
@@ -132,7 +133,7 @@ const MOCK_REVIEWS: Review[] = [
 ];
 
 const AdminReviewsTab: React.FC = () => {
-  const [selectedReview, setSelectedReview] = useState<Review | null>(null);
+  const navigate = useNavigate();
   const [reviews, setReviews] = useState(MOCK_REVIEWS);
   const [ratingFilter, setRatingFilter] = useState<number | 'all'>('all');
 
@@ -157,24 +158,6 @@ const AdminReviewsTab: React.FC = () => {
     lowRating: reviews.filter(r => r.rating <= 2).length,
     objections: reviews.filter(r => r.objection).length,
     pendingObjections: reviews.filter(r => r.objection?.status === 'pending').length,
-  };
-
-  const handleApproveObjection = (reviewId: string) => {
-    setReviews(prev => prev.map(r => 
-      r.id === reviewId && r.objection
-        ? { ...r, objection: { ...r.objection, status: 'approved', resolvedBy: 'Admin User', resolvedAt: new Date().toISOString() } }
-        : r
-    ));
-    setSelectedReview(null);
-  };
-
-  const handleRejectObjection = (reviewId: string) => {
-    setReviews(prev => prev.map(r => 
-      r.id === reviewId && r.objection
-        ? { ...r, objection: { ...r.objection, status: 'rejected', resolvedBy: 'Admin User', resolvedAt: new Date().toISOString() } }
-        : r
-    ));
-    setSelectedReview(null);
   };
 
   const getRatingColor = (rating: number) => {
@@ -307,7 +290,7 @@ const AdminReviewsTab: React.FC = () => {
                 <tr 
                   key={review.id} 
                   className={`hover:bg-slate-50 cursor-pointer ${review.objection?.status === 'pending' ? 'bg-orange-50/50' : ''}`}
-                  onClick={() => setSelectedReview(review)}
+                  onClick={() => navigate(`/admin/review/${review.id}`)}
                 >
                   <td className="px-6 py-4">
                     <div>
@@ -350,27 +333,11 @@ const AdminReviewsTab: React.FC = () => {
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <button
-                        onClick={() => setSelectedReview(review)}
+                        onClick={(e) => { e.stopPropagation(); navigate(`/admin/review/${review.id}`); }}
                         className="p-2 text-slate-400 hover:text-blue-600 bg-slate-50 hover:bg-blue-50 rounded-lg transition-colors"
                       >
                         <Eye size={16} />
                       </button>
-                      {review.objection?.status === 'pending' && (
-                        <>
-                          <button
-                            onClick={() => handleApproveObjection(review.id)}
-                            className="p-2 text-green-600 hover:text-green-700 bg-green-50 hover:bg-green-100 rounded-lg transition-colors"
-                          >
-                            <CheckCircle size={16} />
-                          </button>
-                          <button
-                            onClick={() => handleRejectObjection(review.id)}
-                            className="p-2 text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
-                          >
-                            <XCircle size={16} />
-                          </button>
-                        </>
-                      )}
                     </div>
                   </td>
                 </tr>
@@ -380,90 +347,6 @@ const AdminReviewsTab: React.FC = () => {
         )}
       </div>
 
-      {/* Review Detail Modal */}
-      {selectedReview && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setSelectedReview(null)}>
-          <div className="bg-white rounded-3xl p-6 max-w-2xl w-full" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-slate-900">Değerlendirme Detayları</h2>
-              <button onClick={() => setSelectedReview(null)} className="p-2 hover:bg-slate-100 rounded-lg">
-                <XCircle size={24} className="text-slate-400" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-slate-50 rounded-xl p-4">
-                  <p className="text-xs text-slate-500 mb-1">Partner</p>
-                  <p className="font-bold text-slate-900">{selectedReview.partnerName}</p>
-                  <p className="text-xs text-slate-500">{selectedReview.partnerId}</p>
-                </div>
-                <div className="bg-slate-50 rounded-xl p-4">
-                  <p className="text-xs text-slate-500 mb-1">Müşteri</p>
-                  <p className="font-bold text-slate-900">{selectedReview.customerName}</p>
-                </div>
-              </div>
-
-              <div className="bg-slate-50 rounded-xl p-4">
-                <p className="text-xs text-slate-500 mb-1">Hizmet & Tarih</p>
-                <p className="font-bold text-slate-900">{selectedReview.service}</p>
-                <p className="text-xs text-slate-500 mt-1">{selectedReview.date} • {selectedReview.jobId}</p>
-              </div>
-
-              <div className="bg-slate-50 rounded-xl p-4">
-                <p className="text-xs text-slate-500 mb-2">Puan</p>
-                <div className="flex items-center gap-1">
-                  {[...Array(5)].map((_, i) => (
-                    <Star
-                      key={i}
-                      size={24}
-                      className={i < selectedReview.rating ? getRatingColor(selectedReview.rating) : 'text-slate-300'}
-                      fill={i < selectedReview.rating ? 'currentColor' : 'none'}
-                    />
-                  ))}
-                  <span className="ml-2 text-2xl font-bold text-slate-900">{selectedReview.rating}/5</span>
-                </div>
-              </div>
-
-              <div className="bg-slate-50 rounded-xl p-4">
-                <p className="text-xs text-slate-500 mb-2">Yorum</p>
-                <p className="text-slate-900">{selectedReview.comment}</p>
-              </div>
-
-              {selectedReview.tags.length > 0 && (
-                <div className="bg-slate-50 rounded-xl p-4">
-                  <p className="text-xs text-slate-500 mb-2">Etiketler</p>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedReview.tags.map((tag, idx) => (
-                      <span key={idx} className={`px-3 py-1 rounded-full text-sm font-semibold ${selectedReview.rating >= 4 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {selectedReview.objection && (
-                <div className={`rounded-xl p-4 border-2 ${
-                  selectedReview.objection.status === 'pending' ? 'bg-orange-50 border-orange-200' :
-                  selectedReview.objection.status === 'approved' ? 'bg-green-50 border-green-200' :
-                  'bg-red-50 border-red-200'
-                }`}>
-                  <p className="text-xs font-bold text-slate-700 mb-1">İTİRAZ BİLGİSİ</p>
-                  <p className="font-bold text-slate-900 mb-2">{selectedReview.objection.reason}</p>
-                  <p className="text-sm text-slate-700 mb-3">{selectedReview.objection.details}</p>
-                  <p className="text-xs text-slate-500">Gönderim: {selectedReview.objection.submittedAt}</p>
-                  {selectedReview.objection.resolvedBy && (
-                    <p className="text-xs text-slate-500 mt-1">
-                      Çözüm: {selectedReview.objection.resolvedBy} • {selectedReview.objection.resolvedAt}
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

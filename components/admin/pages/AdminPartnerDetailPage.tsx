@@ -28,8 +28,22 @@ const AdminPartnerDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [activeSubTab, setActiveSubTab] = useState<'info' | 'fleet' | 'earnings' | 'history'>('info');
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showCreditModal, setShowCreditModal] = useState(false);
   
   const partner = MOCK_PARTNERS.find(p => p.id === id);
+
+  const handleToggleStatus = () => {
+    alert(`Partner durumu değiştirildi: ${partner?.status === 'active' ? 'Askıya alındı' : 'Aktif edildi'}`);
+  };
+
+  const handleEditInfo = () => {
+    setShowEditModal(true);
+  };
+
+  const handleLoadCredit = () => {
+    setShowCreditModal(true);
+  };
 
   if (!partner) {
     return (
@@ -184,13 +198,22 @@ const AdminPartnerDetailPage: React.FC = () => {
             </div>
 
             <div className="flex gap-4 mt-8">
-              <button className="px-6 py-3 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600">
+              <button 
+                onClick={handleEditInfo}
+                className="px-6 py-3 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600"
+              >
                 Bilgileri Düzenle
               </button>
-              <button className="px-6 py-3 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600">
+              <button 
+                onClick={handleLoadCredit}
+                className="px-6 py-3 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600"
+              >
                 Kredi Yükle
               </button>
-              <button className="px-6 py-3 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200">
+              <button 
+                onClick={handleToggleStatus}
+                className="px-6 py-3 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200"
+              >
                 {partner.status === 'active' ? 'Askıya Al' : 'Aktif Et'}
               </button>
             </div>

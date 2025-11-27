@@ -1,6 +1,6 @@
 import React from 'react';
 
-export type StatusBadgeType = 'user' | 'partner' | 'request' | 'offer' | 'document' | 'vehicle' | 'payment' | 'objection';
+export type StatusBadgeType = 'user' | 'partner' | 'request' | 'offer' | 'document' | 'vehicle' | 'payment' | 'objection' | 'support';
 
 interface StatusBadgeProps {
   type?: StatusBadgeType;
@@ -22,7 +22,10 @@ const maps: Record<StatusBadgeType, Record<string, { label: string; classes: str
     open: { label: 'Açık', classes: 'bg-yellow-100 text-yellow-700' },
     matched: { label: 'Eşleşti', classes: 'bg-blue-100 text-blue-700' },
     completed: { label: 'Tamamlandı', classes: 'bg-green-100 text-green-700' },
-    cancelled: { label: 'İptal', classes: 'bg-red-100 text-red-700' }
+    cancelled: { label: 'İptal', classes: 'bg-red-100 text-red-700' },
+    pending: { label: 'Bekleyen', classes: 'bg-orange-100 text-orange-700' },
+    approved: { label: 'Onaylandı', classes: 'bg-green-100 text-green-700' },
+    rejected: { label: 'Reddedildi', classes: 'bg-red-100 text-red-700' }
   },
   offer: {
     sent: { label: 'Gönderildi', classes: 'bg-blue-100 text-blue-700' },
@@ -51,6 +54,12 @@ const maps: Record<StatusBadgeType, Record<string, { label: string; classes: str
     pending: { label: 'Beklemede', classes: 'bg-orange-100 text-orange-700' },
     approved: { label: 'Onaylandı', classes: 'bg-green-100 text-green-700' },
     rejected: { label: 'Reddedildi', classes: 'bg-red-100 text-red-700' }
+  },
+  support: {
+    open: { label: 'Açık', classes: 'bg-yellow-100 text-yellow-700' },
+    in_progress: { label: 'İşlemde', classes: 'bg-blue-100 text-blue-700' },
+    resolved: { label: 'Çözüldü', classes: 'bg-green-100 text-green-700' },
+    closed: { label: 'Kapatıldı', classes: 'bg-slate-100 text-slate-700' }
   }
 };
 

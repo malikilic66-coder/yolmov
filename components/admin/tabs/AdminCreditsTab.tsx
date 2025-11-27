@@ -1,20 +1,19 @@
 /**
  * Admin Credits Management Tab
- * Partner kredi bakiyesi yönetimi, işlem geçmişi, manuel ayarlamalar
+ * Müşterilere ulaşmak için satın alınan iletişim kredisi yönetimi
  */
 
 import React, { useState } from 'react';
-import { Search, Wallet, Plus, Minus, TrendingUp, TrendingDown, Eye, Calendar, Filter } from 'lucide-react';
+import { Search, Wallet, Plus, Minus, Phone, ShoppingCart, Eye, Calendar, Filter } from 'lucide-react';
 import { useAdminFilter } from '../hooks/useAdminFilter';
 import EmptyState from '../ui/EmptyState';
 
 interface CreditAccount {
   partnerId: string;
   partnerName: string;
-  balance: number;
-  totalEarned: number;
-  totalWithdrawn: number;
-  pendingAmount: number;
+  balance: number; // Kalan iletişim kredisi
+  totalPurchased: number; // Toplam satın alınan kredi
+  totalUsed: number; // Kullanılan kredi (müşteriye ulaşma)
   lastTransaction: string;
 }
 
@@ -22,13 +21,13 @@ interface CreditTransaction {
   id: string;
   partnerId: string;
   partnerName: string;
-  type: 'earning' | 'withdrawal' | 'adjustment' | 'refund';
+  type: 'purchase' | 'usage' | 'adjustment' | 'refund';
   amount: number;
   balanceBefore: number;
   balanceAfter: number;
   description: string;
   date: string;
-  jobId?: string;
+  requestId?: string; // Hangi talep için kullanıldı
   adminUser?: string;
 }
 
@@ -37,28 +36,25 @@ const MOCK_ACCOUNTS: CreditAccount[] = [
   {
     partnerId: 'PTR-001',
     partnerName: 'Yılmaz Oto Kurtarma',
-    balance: 8750,
-    totalEarned: 45200,
-    totalWithdrawn: 36000,
-    pendingAmount: 450,
+    balance: 25, // Kalan iletişim hakkı
+    totalPurchased: 100, // Toplam satın aldığı kredi
+    totalUsed: 75, // Kullandığı kredi (müşteriye ulaşma)
     lastTransaction: '2024-11-22 15:30',
   },
   {
     partnerId: 'PTR-002',
     partnerName: 'Hızlı Yol Yardım',
-    balance: 12300,
-    totalEarned: 67800,
-    totalWithdrawn: 55000,
-    pendingAmount: 500,
+    balance: 50,
+    totalPurchased: 200,
+    totalUsed: 150,
     lastTransaction: '2024-11-15 14:00',
   },
   {
     partnerId: 'PTR-003',
     partnerName: 'Mega Çekici',
-    balance: 5620,
-    totalEarned: 28900,
-    totalWithdrawn: 23000,
-    pendingAmount: 280,
+    balance: 10,
+    totalPurchased: 50,
+    totalUsed: 40,
     lastTransaction: '2024-11-10 16:45',
   },
 ];
@@ -68,106 +64,58 @@ const MOCK_TRANSACTIONS: CreditTransaction[] = [
     id: 'TRX-001',
     partnerId: 'PTR-001',
     partnerName: 'Yılmaz Oto Kurtarma',
-    type: 'earning',
-    amount: 2125,
-    balanceBefore: 6625,
-    balanceAfter: 8750,
-    description: 'İş tamamlama kazancı - Çekici Hizmeti',
+    type: 'usage',
+    amount: -1,
+    balanceBefore: 26,
+    balanceAfter: 25,
+    description: 'Müşteri iletişim talebi - Çekici Hizmeti',
     date: '2024-11-22 15:30',
-    jobId: 'JOB-4923',
+    requestId: 'REQ-4923',
   },
   {
     id: 'TRX-002',
     partnerId: 'PTR-001',
     partnerName: 'Yılmaz Oto Kurtarma',
-    type: 'withdrawal',
-    amount: -5000,
-    balanceBefore: 11625,
-    balanceAfter: 6625,
-    description: 'Banka hesabına aktarım',
+    type: 'purchase',
+    amount: 50,
+    balanceBefore: 26,
+    balanceAfter: 76,
+    description: 'Kredi paketi satın alındı - 50 Kredi',
     date: '2024-11-20 10:00',
   },
   {
     id: 'TRX-003',
-    partnerId: 'PTR-001',
-    partnerName: 'Yılmaz Oto Kurtarma',
-    type: 'earning',
-    amount: 680,
-    balanceBefore: 10945,
-    balanceAfter: 11625,
-    description: 'İş tamamlama kazancı - Akü Takviyesi',
+    partnerId: 'PTR-002',
+    partnerName: 'Hızlı Yol Yardım',
+    type: 'usage',
+    amount: -1,
+    balanceBefore: 51,
+    balanceAfter: 50,
+    description: 'Müşteri iletişim talebi - Akü Takviyesi',
     date: '2024-11-19 10:15',
-    jobId: 'JOB-4920',
+    requestId: 'REQ-4920',
   },
   {
     id: 'TRX-004',
     partnerId: 'PTR-002',
     partnerName: 'Hızlı Yol Yardım',
-    type: 'earning',
-    amount: 2720,
-    balanceBefore: 9580,
-    balanceAfter: 12300,
-    description: 'İş tamamlama kazancı - Çekici Hizmeti',
+    type: 'purchase',
+    amount: 100,
+    balanceBefore: 0,
+    balanceAfter: 100,
+    description: 'Kredi paketi satın alındı - 100 Kredi',
     date: '2024-11-15 14:00',
-    jobId: 'JOB-4918',
   },
   {
     id: 'TRX-005',
-    partnerId: 'PTR-002',
-    partnerName: 'Hızlı Yol Yardım',
-    type: 'withdrawal',
-    amount: -8000,
-    balanceBefore: 17580,
-    balanceAfter: 9580,
-    description: 'Banka hesabına aktarım',
-    date: '2024-11-13 09:30',
-  },
-  {
-    id: 'TRX-006',
-    partnerId: 'PTR-002',
-    partnerName: 'Hızlı Yol Yardım',
-    type: 'refund',
-    amount: -2380,
-    balanceBefore: 19960,
-    balanceAfter: 17580,
-    description: 'Müşteri iadesi',
-    date: '2024-11-12 11:00',
-    jobId: 'JOB-4915',
-  },
-  {
-    id: 'TRX-007',
     partnerId: 'PTR-003',
     partnerName: 'Mega Çekici',
-    type: 'earning',
-    amount: 510,
-    balanceBefore: 5110,
-    balanceAfter: 5620,
-    description: 'İş tamamlama kazancı - Lastik Değişimi',
-    date: '2024-11-10 16:45',
-    jobId: 'JOB-4912',
-  },
-  {
-    id: 'TRX-008',
-    partnerId: 'PTR-003',
-    partnerName: 'Mega Çekici',
-    type: 'earning',
-    amount: 340,
-    balanceBefore: 4770,
-    balanceAfter: 5110,
-    description: 'İş tamamlama kazancı - Yakıt Desteği',
-    date: '2024-11-08 11:20',
-    jobId: 'JOB-4910',
-  },
-  {
-    id: 'TRX-009',
-    partnerId: 'PTR-001',
-    partnerName: 'Yılmaz Oto Kurtarma',
     type: 'adjustment',
-    amount: 500,
-    balanceBefore: 10445,
-    balanceAfter: 10945,
-    description: 'Manuel düzeltme - Eksik ödeme düzeltmesi',
-    date: '2024-11-07 14:15',
+    amount: 10,
+    balanceBefore: 0,
+    balanceAfter: 10,
+    description: 'Manuel kredi ekleme - Promosyon',
+    date: '2024-11-10 16:45',
     adminUser: 'Admin User',
   },
 ];
@@ -183,7 +131,7 @@ const AdminCreditsTab: React.FC = () => {
 
   const { filtered, searchTerm, setSearchTerm } = useAdminFilter<CreditTransaction>(
     transactions,
-    { searchKeys: ['partnerName', 'description', 'jobId'] }
+    { searchKeys: ['partnerName', 'description', 'requestId'] }
   );
 
   const filteredByType = typeFilter === 'all' 
@@ -192,9 +140,8 @@ const AdminCreditsTab: React.FC = () => {
 
   const stats = {
     totalBalance: accounts.reduce((sum, a) => sum + a.balance, 0),
-    totalEarned: accounts.reduce((sum, a) => sum + a.totalEarned, 0),
-    totalWithdrawn: accounts.reduce((sum, a) => sum + a.totalWithdrawn, 0),
-    totalPending: accounts.reduce((sum, a) => sum + a.pendingAmount, 0),
+    totalPurchased: accounts.reduce((sum, a) => sum + a.totalPurchased, 0),
+    totalUsed: accounts.reduce((sum, a) => sum + a.totalUsed, 0),
     activePartners: accounts.length,
   };
 
@@ -226,8 +173,8 @@ const AdminCreditsTab: React.FC = () => {
 
   const getTransactionColor = (type: CreditTransaction['type']) => {
     switch (type) {
-      case 'earning': return 'text-green-600 bg-green-50';
-      case 'withdrawal': return 'text-blue-600 bg-blue-50';
+      case 'purchase': return 'text-green-600 bg-green-50';
+      case 'usage': return 'text-blue-600 bg-blue-50';
       case 'adjustment': return 'text-purple-600 bg-purple-50';
       case 'refund': return 'text-red-600 bg-red-50';
     }
@@ -235,8 +182,8 @@ const AdminCreditsTab: React.FC = () => {
 
   const getTransactionLabel = (type: CreditTransaction['type']) => {
     switch (type) {
-      case 'earning': return 'Kazanç';
-      case 'withdrawal': return 'Çekim';
+      case 'purchase': return 'Satın Alım';
+      case 'usage': return 'Kullanım';
       case 'adjustment': return 'Düzeltme';
       case 'refund': return 'İade';
     }
@@ -244,8 +191,8 @@ const AdminCreditsTab: React.FC = () => {
 
   const getTransactionIcon = (type: CreditTransaction['type']) => {
     switch (type) {
-      case 'earning': return <TrendingUp size={16} />;
-      case 'withdrawal': return <TrendingDown size={16} />;
+      case 'purchase': return <ShoppingCart size={16} />;
+      case 'usage': return <Phone size={16} />;
       case 'adjustment': return <Filter size={16} />;
       case 'refund': return <Minus size={16} />;
     }
@@ -260,36 +207,36 @@ const AdminCreditsTab: React.FC = () => {
             <Wallet size={20} />
             <span className="text-xs font-bold">Toplam Bakiye</span>
           </div>
-          <p className="text-2xl font-black">{stats.totalBalance.toLocaleString('tr-TR')}₺</p>
+          <p className="text-2xl font-black">{stats.totalBalance.toLocaleString('tr-TR')} Kredi</p>
           <p className="text-xs opacity-80">{stats.activePartners} aktif partner</p>
         </div>
         <div className="bg-blue-50 rounded-xl border border-blue-200 p-4">
           <div className="flex items-center justify-between mb-2">
-            <TrendingUp size={20} className="text-blue-600" />
-            <span className="text-xs font-bold text-blue-600">Kazanılan</span>
+            <ShoppingCart size={20} className="text-blue-600" />
+            <span className="text-xs font-bold text-blue-600">Satın Alınan</span>
           </div>
-          <p className="text-2xl font-black text-blue-700">{stats.totalEarned.toLocaleString('tr-TR')}₺</p>
+          <p className="text-2xl font-black text-blue-700">{stats.totalPurchased.toLocaleString('tr-TR')} Kredi</p>
         </div>
         <div className="bg-purple-50 rounded-xl border border-purple-200 p-4">
           <div className="flex items-center justify-between mb-2">
-            <TrendingDown size={20} className="text-purple-600" />
-            <span className="text-xs font-bold text-purple-600">Çekilen</span>
+            <Phone size={20} className="text-purple-600" />
+            <span className="text-xs font-bold text-purple-600">Kullanılan</span>
           </div>
-          <p className="text-2xl font-black text-purple-700">{stats.totalWithdrawn.toLocaleString('tr-TR')}₺</p>
+          <p className="text-2xl font-black text-purple-700">{stats.totalUsed.toLocaleString('tr-TR')} Kredi</p>
         </div>
         <div className="bg-orange-50 rounded-xl border border-orange-200 p-4">
           <div className="flex items-center justify-between mb-2">
             <Calendar size={20} className="text-orange-600" />
-            <span className="text-xs font-bold text-orange-600">Bekleyen</span>
+            <span className="text-xs font-bold text-orange-600">Kullanılabilir</span>
           </div>
-          <p className="text-2xl font-black text-orange-700">{stats.totalPending.toLocaleString('tr-TR')}₺</p>
+          <p className="text-2xl font-black text-orange-700">{stats.totalBalance.toLocaleString('tr-TR')} Kredi</p>
         </div>
         <div className="bg-slate-50 rounded-xl border border-slate-200 p-4">
           <div className="flex items-center justify-between mb-2">
             <Filter size={20} className="text-slate-600" />
             <span className="text-xs font-bold text-slate-600">Ortalama</span>
           </div>
-          <p className="text-2xl font-black text-slate-700">{(stats.totalBalance / stats.activePartners).toLocaleString('tr-TR')}₺</p>
+          <p className="text-2xl font-black text-slate-700">{(stats.totalBalance / stats.activePartners).toLocaleString('tr-TR')} Kredi</p>
         </div>
       </div>
 
@@ -305,22 +252,22 @@ const AdminCreditsTab: React.FC = () => {
                   <p className="text-xs text-slate-500">{account.partnerId}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-2xl font-black text-green-600">{account.balance.toLocaleString('tr-TR')}₺</p>
+                  <p className="text-2xl font-black text-green-600">{account.balance.toLocaleString('tr-TR')} Kredi</p>
                   <p className="text-xs text-slate-500">Mevcut Bakiye</p>
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-4 mb-3">
                 <div>
-                  <p className="text-xs text-slate-500">Toplam Kazanç</p>
-                  <p className="font-bold text-blue-600">{account.totalEarned.toLocaleString('tr-TR')}₺</p>
+                  <p className="text-xs text-slate-500">Toplam Satın Alınan</p>
+                  <p className="font-bold text-blue-600">{account.totalPurchased.toLocaleString('tr-TR')} Kredi</p>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-500">Toplam Çekim</p>
-                  <p className="font-bold text-purple-600">{account.totalWithdrawn.toLocaleString('tr-TR')}₺</p>
+                  <p className="text-xs text-slate-500">Toplam Kullanılan</p>
+                  <p className="font-bold text-purple-600">{account.totalUsed.toLocaleString('tr-TR')} Kredi</p>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-500">Bekleyen</p>
-                  <p className="font-bold text-orange-600">{account.pendingAmount.toLocaleString('tr-TR')}₺</p>
+                  <p className="text-xs text-slate-500">Kalan</p>
+                  <p className="font-bold text-orange-600">{account.balance.toLocaleString('tr-TR')} Kredi</p>
                 </div>
               </div>
               <div className="flex items-center justify-between">
@@ -347,7 +294,7 @@ const AdminCreditsTab: React.FC = () => {
           <Search size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
-            placeholder="Partner, açıklama veya iş ID ara..."
+            placeholder="Partner, açıklama veya talep ID ara..."
             className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -361,16 +308,16 @@ const AdminCreditsTab: React.FC = () => {
             Tümü
           </button>
           <button
-            onClick={() => setTypeFilter('earning')}
-            className={`px-4 py-2 rounded-lg font-bold transition-all ${typeFilter === 'earning' ? 'bg-green-600 text-white' : 'bg-white border border-slate-200 text-slate-700'}`}
+            onClick={() => setTypeFilter('purchase')}
+            className={`px-4 py-2 rounded-lg font-bold transition-all ${typeFilter === 'purchase' ? 'bg-green-600 text-white' : 'bg-white border border-slate-200 text-slate-700'}`}
           >
-            Kazanç
+            Satın Alım
           </button>
           <button
-            onClick={() => setTypeFilter('withdrawal')}
-            className={`px-4 py-2 rounded-lg font-bold transition-all ${typeFilter === 'withdrawal' ? 'bg-blue-600 text-white' : 'bg-white border border-slate-200 text-slate-700'}`}
+            onClick={() => setTypeFilter('usage')}
+            className={`px-4 py-2 rounded-lg font-bold transition-all ${typeFilter === 'usage' ? 'bg-blue-600 text-white' : 'bg-white border border-slate-200 text-slate-700'}`}
           >
-            Çekim
+            Kullanım
           </button>
           <button
             onClick={() => setTypeFilter('adjustment')}
@@ -405,10 +352,10 @@ const AdminCreditsTab: React.FC = () => {
                       <span>{transaction.date}</span>
                       <span>•</span>
                       <span>{transaction.id}</span>
-                      {transaction.jobId && (
+                      {transaction.requestId && (
                         <>
                           <span>•</span>
-                          <span>{transaction.jobId}</span>
+                          <span>{transaction.requestId}</span>
                         </>
                       )}
                       {transaction.adminUser && (
@@ -422,10 +369,10 @@ const AdminCreditsTab: React.FC = () => {
                 </div>
                 <div className="text-right">
                   <p className={`text-xl font-black ${transaction.amount >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {transaction.amount >= 0 ? '+' : ''}{transaction.amount.toLocaleString('tr-TR')}₺
+                    {transaction.amount >= 0 ? '+' : ''}{transaction.amount.toLocaleString('tr-TR')} Kredi
                   </p>
                   <p className="text-xs text-slate-500 mt-1">
-                    Önceki: {transaction.balanceBefore.toLocaleString('tr-TR')}₺ → Sonraki: {transaction.balanceAfter.toLocaleString('tr-TR')}₺
+                    Önceki: {transaction.balanceBefore.toLocaleString('tr-TR')} → Sonraki: {transaction.balanceAfter.toLocaleString('tr-TR')}
                   </p>
                 </div>
               </div>
@@ -438,7 +385,7 @@ const AdminCreditsTab: React.FC = () => {
       {showAdjustmentModal && selectedAccount && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowAdjustmentModal(false)}>
           <div className="bg-white rounded-3xl p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-2xl font-bold text-slate-900 mb-4">Bakiye Düzeltme</h2>
+            <h2 className="text-2xl font-bold text-slate-900 mb-4">Kredi Düzeltme</h2>
             <div className="space-y-4">
               <div className="bg-slate-50 rounded-xl p-4">
                 <p className="text-xs text-slate-500 mb-1">Partner</p>
@@ -446,14 +393,14 @@ const AdminCreditsTab: React.FC = () => {
                 <p className="text-xs text-slate-500">{selectedAccount.partnerId}</p>
               </div>
               <div className="bg-green-50 rounded-xl border-2 border-green-200 p-4">
-                <p className="text-xs text-green-600 mb-1">Mevcut Bakiye</p>
-                <p className="text-2xl font-black text-green-700">{selectedAccount.balance.toLocaleString('tr-TR')}₺</p>
+                <p className="text-xs text-green-600 mb-1">Mevcut Kredi Bakiyesi</p>
+                <p className="text-2xl font-black text-green-700">{selectedAccount.balance.toLocaleString('tr-TR')} Kredi</p>
               </div>
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">Tutar (+ veya -)</label>
+                <label className="block text-sm font-bold text-slate-700 mb-2">Kredi Miktarı (+ veya -)</label>
                 <input
                   type="number"
-                  placeholder="Örn: +500 veya -200"
+                  placeholder="Örn: +50 veya -10"
                   className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
                   value={adjustmentAmount}
                   onChange={(e) => setAdjustmentAmount(e.target.value)}
