@@ -143,7 +143,9 @@ function App() {
             <Route path="/admin/giris" element={<AdminLoginPage />} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/kullanicilar" element={<AdminDashboard />} />
+            <Route path="/admin/kullanicilar/:id" element={<AdminDashboard />} />
             <Route path="/admin/partnerler" element={<AdminDashboard />} />
+            <Route path="/admin/partnerler/:id" element={<AdminDashboard />} />
             <Route path="/admin/talepler" element={<AdminDashboard />} />
             <Route path="/admin/musteri-talepleri" element={<AdminDashboard />} />
             <Route path="/admin/teklifler" element={<AdminDashboard />} />
@@ -154,8 +156,7 @@ function App() {
             <Route path="/admin/finansal" element={<AdminDashboard />} />
             <Route path="/admin/krediler" element={<AdminDashboard />} />
             <Route path="/admin/is-gecmisi" element={<AdminDashboard />} />
-            <Route path="/admin/kullanici/:id" element={<AdminUserDetailPage />} />
-            <Route path="/admin/partner/:id" element={<AdminPartnerDetailPage />} />
+            {/* Kullanıcı ve Partner detayları artık AdminDashboard içinde gösteriliyor */}
             <Route path="/admin/talep/:id" element={<AdminRequestDetailPage />} />
             <Route path="/admin/talep/lead/:id" element={<AdminLeadRequestDetailPage />} />
             <Route path="/admin/talep/alan/:id" element={<AdminAreaRequestDetailPage />} />

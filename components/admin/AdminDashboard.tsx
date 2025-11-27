@@ -1,5 +1,5 @@
 import React, { useState, lazy, Suspense, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { Users, Shield, FileText, Search, Eye, Edit, Trash2, UserPlus, CheckCircle, DollarSign, Mail, Phone, Star } from 'lucide-react';
 import AdminSidebar from './AdminSidebar';
 import AdminHeader from './AdminHeader';
@@ -284,6 +284,7 @@ const MOCK_OFFERS: OfferLog[] = [
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const params = useParams<{ id?: string }>();
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'partners' | 'requests' | 'customer-requests' | 'offers' | 'reports' | 'documents' | 'fleet' | 'reviews' | 'financial' | 'credits' | 'job-history'>('overview');
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [userTypeFilter, setUserTypeFilter] = useState<'all' | 'customer' | 'partner'>('all');
@@ -309,6 +310,16 @@ const AdminDashboard: React.FC = () => {
       '/admin/krediler': 'credits',
       '/admin/is-gecmisi': 'job-history'
     };
+    
+    // Detay sayfaları için tab belirleme
+    if (location.pathname.startsWith('/admin/kullanicilar/')) {
+      setActiveTab('users');
+      return;
+    }
+    if (location.pathname.startsWith('/admin/partnerler/')) {
+      setActiveTab('partners');
+      return;
+    }
     const newTab = pathMap[location.pathname];
     if (newTab) {
       setActiveTab(newTab);
@@ -448,6 +459,11 @@ const AdminDashboard: React.FC = () => {
 
           {activeTab === 'users' && (
             <div className="space-y-6" id="panel-users" role="tabpanel" aria-labelledby="users">
+              {/* Eğer params.id varsa detay göster */}
+              {params.id ? (
+                <UserDetailPanel userId={params.id} onBack={() => navigate('/admin/kullanicilar')} />
+              ) : (
+                <>
               <div className="flex gap-4">
                 <div className="flex-1 relative">
                   <Search size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -497,7 +513,7 @@ const AdminDashboard: React.FC = () => {
                           <td className="px-6 py-4" role="cell">
                             <div 
                               className="cursor-pointer hover:text-orange-600 transition-colors"
-                              onClick={() => navigate(`/admin/kullanici/${user.id}`)}
+                              onClick={() => navigate(`/admin/kullanicilar/${user.id}`)}
                             >
                               <p className="font-bold text-slate-900">{user.name}</p>
                               <p className="text-xs text-slate-500">{user.email}</p>
@@ -508,7 +524,7 @@ const AdminDashboard: React.FC = () => {
                           <td className="px-6 py-4 text-sm text-slate-600" role="cell">{user.joinDate}</td>
                           <td className="px-6 py-4 text-sm font-bold text-slate-900" role="cell">₺{(user.totalSpent || user.totalEarned || 0).toLocaleString()}</td>
                           <td className="px-6 py-4 text-right" role="cell">
-                            <button onClick={() => navigate(`/admin/kullanici/${user.id}`)} className="p-2 text-slate-400 hover:text-blue-600" aria-label={`Kullanıcı ${user.id} görüntüle`}><Eye size={18} /></button>
+                            <button onClick={() => navigate(`/admin/kullanicilar/${user.id}`)} className="p-2 text-slate-400 hover:text-blue-600" aria-label={`Kullanıcı ${user.id} görüntüle`}><Eye size={18} /></button>
                             <button className="p-2 text-slate-400 hover:text-orange-600" aria-label={`Kullanıcı ${user.id} düzenle`}><Edit size={18} /></button>
                             <button className="p-2 text-slate-400 hover:text-red-600" aria-label={`Kullanıcı ${user.id} sil`}><Trash2 size={18} /></button>
                           </td>
@@ -518,11 +534,18 @@ const AdminDashboard: React.FC = () => {
                   </table>
                 )}
               </div>
+              </>
+              )}
             </div>
           )}
 
           {activeTab === 'partners' && (
             <div className="space-y-6" id="panel-partners" role="tabpanel" aria-labelledby="partners">
+              {/* Eğer params.id varsa detay göster */}
+              {params.id ? (
+                <PartnerDetailPanel partnerId={params.id} onBack={() => navigate('/admin/partnerler')} />
+              ) : (
+                <>
               <div className="flex gap-4">
                 <div className="flex-1 relative">
                   <Search size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -569,7 +592,7 @@ const AdminDashboard: React.FC = () => {
                               <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center"><Shield size={20} className="text-orange-600" /></div>
                               <div 
                                 className="cursor-pointer hover:text-orange-600 transition-colors"
-                                onClick={() => navigate(`/admin/partner/${partner.id}`)}
+                                onClick={() => navigate(`/admin/partnerler/${partner.id}`)}
                               >
                                 <p className="font-bold text-slate-900">{partner.name}</p>
                                 <p className="text-xs text-slate-500">{partner.id}</p>
@@ -594,7 +617,7 @@ const AdminDashboard: React.FC = () => {
                           </td>
                           <td className="px-6 py-4" role="cell"><StatusBadge type="partner" status={partner.status} /></td>
                           <td className="px-6 py-4 text-right" role="cell">
-                            <button onClick={() => navigate(`/admin/partner/${partner.id}`)} className="p-2 text-slate-400 hover:text-blue-600" aria-label={`Partner ${partner.id} görüntüle`}><Eye size={18} /></button>
+                            <button onClick={() => navigate(`/admin/partnerler/${partner.id}`)} className="p-2 text-slate-400 hover:text-blue-600" aria-label={`Partner ${partner.id} görüntüle`}><Eye size={18} /></button>
                             <button className="p-2 text-slate-400 hover:text-orange-600" aria-label={`Partner ${partner.id} düzenle`}><Edit size={18} /></button>
                             <button className="p-2 text-slate-400 hover:text-red-600" aria-label={`Partner ${partner.id} sil`}><Trash2 size={18} /></button>
                           </td>
@@ -604,6 +627,8 @@ const AdminDashboard: React.FC = () => {
                   </table>
                 )}
               </div>
+              </>
+              )}
             </div>
           )}
 
@@ -712,6 +737,211 @@ const AdminDashboard: React.FC = () => {
           </div>
         </div>
       )}
+    </div>
+  );
+};
+
+// User Detail Panel Component (Inline)
+interface UserDetailPanelProps {
+  userId: string;
+  onBack: () => void;
+}
+
+const UserDetailPanel: React.FC<UserDetailPanelProps> = ({ userId, onBack }) => {
+  const MOCK_USERS_DETAIL: User[] = [
+    { id: 'USR-001', name: 'Ahmet Yılmaz', email: 'ahmet@example.com', type: 'customer', status: 'active', joinDate: '2023-10-15', totalSpent: 2400 },
+    { id: 'USR-002', name: 'Selin Kaya', email: 'selin@example.com', type: 'customer', status: 'active', joinDate: '2023-11-01', totalSpent: 800 },
+  ];
+  
+  const user = MOCK_USERS_DETAIL.find(u => u.id === userId);
+
+  if (!user) {
+    return (
+      <div className="bg-white rounded-2xl border border-slate-200 p-8">
+        <button onClick={onBack} className="flex items-center gap-2 text-slate-600 hover:text-slate-900 mb-4">
+          ← Geri Dön
+        </button>
+        <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl">
+          Kullanıcı bulunamadı.
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+          ← Geri
+        </button>
+        <h2 className="text-2xl font-bold text-slate-900">Kullanıcı Detayı</h2>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-slate-200 p-6">
+        <div className="flex items-start justify-between mb-6">
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white text-2xl font-bold">
+              {user.name.charAt(0)}
+            </div>
+            <div>
+              <h3 className="text-2xl font-bold text-slate-900">{user.name}</h3>
+              <p className="text-slate-500">{user.id}</p>
+            </div>
+          </div>
+          <span className={`px-4 py-2 rounded-full text-sm font-bold ${
+            user.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+          }`}>
+            {user.status === 'active' ? 'Aktif' : 'Askıda'}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl">
+            <Mail size={20} className="text-slate-400" />
+            <div>
+              <p className="text-xs text-slate-500">Email</p>
+              <p className="font-medium text-slate-900">{user.email}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl">
+            <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+              user.type === 'customer' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'
+            }`}>
+              {user.type === 'customer' ? 'Müşteri (B2C)' : 'Partner (B2B)'}
+            </span>
+          </div>
+          <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl">
+            <DollarSign size={20} className="text-slate-400" />
+            <div>
+              <p className="text-xs text-slate-500">Toplam Harcama</p>
+              <p className="font-bold text-slate-900">₺{(user.totalSpent || 0).toLocaleString()}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl">
+            <span className="text-xs text-slate-500">Kayıt Tarihi: {user.joinDate}</span>
+          </div>
+        </div>
+
+        <div className="flex gap-3 mt-6">
+          <button className="px-6 py-3 bg-orange-600 text-white rounded-xl font-bold hover:bg-orange-700">
+            Düzenle
+          </button>
+          <button className="px-6 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700">
+            {user.status === 'active' ? 'Askıya Al' : 'Aktif Et'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Partner Detail Panel Component (Inline)
+interface PartnerDetailPanelProps {
+  partnerId: string;
+  onBack: () => void;
+}
+
+const PartnerDetailPanel: React.FC<PartnerDetailPanelProps> = ({ partnerId, onBack }) => {
+  const MOCK_PARTNERS_DETAIL: Partner[] = [
+    { id: 'PTR-001', name: 'Yılmaz Oto Kurtarma', email: 'yilmaz@partner.com', phone: '0532 XXX XX 01', rating: 4.9, completedJobs: 128, credits: 25, status: 'active' },
+    { id: 'PTR-002', name: 'Hızlı Yol Yardım', email: 'hizli@partner.com', phone: '0533 XXX XX 02', rating: 4.7, completedJobs: 203, credits: 50, status: 'active' },
+    { id: 'PTR-003', name: 'Mega Çekici', email: 'mega@partner.com', phone: '0534 XXX XX 03', rating: 4.5, completedJobs: 89, credits: 10, status: 'pending' },
+  ];
+  
+  const partner = MOCK_PARTNERS_DETAIL.find(p => p.id === partnerId);
+
+  if (!partner) {
+    return (
+      <div className="bg-white rounded-2xl border border-slate-200 p-8">
+        <button onClick={onBack} className="flex items-center gap-2 text-slate-600 hover:text-slate-900 mb-4">
+          ← Geri Dön
+        </button>
+        <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl">
+          Partner bulunamadı.
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+          ← Geri
+        </button>
+        <h2 className="text-2xl font-bold text-slate-900">Partner Detayı</h2>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-slate-200 p-6">
+        <div className="flex items-start justify-between mb-6">
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white text-2xl font-bold">
+              <Shield size={32} />
+            </div>
+            <div>
+              <h3 className="text-2xl font-bold text-slate-900">{partner.name}</h3>
+              <p className="text-slate-500">{partner.id}</p>
+            </div>
+          </div>
+          <span className={`px-4 py-2 rounded-full text-sm font-bold ${
+            partner.status === 'active' ? 'bg-green-100 text-green-700' :
+            partner.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+            'bg-red-100 text-red-700'
+          }`}>
+            {partner.status === 'active' ? 'Aktif' : partner.status === 'pending' ? 'Onay Bekliyor' : 'Askıda'}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl">
+            <Mail size={20} className="text-slate-400" />
+            <div>
+              <p className="text-xs text-slate-500">Email</p>
+              <p className="font-medium text-slate-900">{partner.email}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl">
+            <Phone size={20} className="text-slate-400" />
+            <div>
+              <p className="text-xs text-slate-500">Telefon</p>
+              <p className="font-medium text-slate-900">{partner.phone}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl">
+            <Star size={20} className="text-yellow-500 fill-yellow-500" />
+            <div>
+              <p className="text-xs text-slate-500">Puan</p>
+              <p className="font-bold text-slate-900">{partner.rating}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl">
+            <CheckCircle size={20} className="text-green-500" />
+            <div>
+              <p className="text-xs text-slate-500">Tamamlanan İşler</p>
+              <p className="font-bold text-slate-900">{partner.completedJobs}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 p-4 bg-orange-50 rounded-xl border border-orange-200">
+            <DollarSign size={20} className="text-orange-600" />
+            <div>
+              <p className="text-xs text-orange-700 font-bold">Kredi Bakiyesi</p>
+              <p className="font-black text-2xl text-orange-900">{partner.credits}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-3 mt-6">
+          <button className="px-6 py-3 bg-orange-600 text-white rounded-xl font-bold hover:bg-orange-700">
+            Düzenle
+          </button>
+          <button className="px-6 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700">
+            Kredi Ekle
+          </button>
+          <button className="px-6 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700">
+            {partner.status === 'active' ? 'Askıya Al' : 'Onayla'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 };
