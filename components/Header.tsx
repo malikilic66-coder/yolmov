@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Menu, X, Briefcase } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -20,6 +20,25 @@ const Header: React.FC<HeaderProps> = () => {
     const saved = localStorage.getItem('yolmov_customer');
     return saved ? JSON.parse(saved) : null;
   });
+
+  // Re-check localStorage on route change (login redirect will trigger this)
+  useEffect(() => {
+    const saved = localStorage.getItem('yolmov_customer');
+    const parsed = saved ? JSON.parse(saved) : null;
+    setCustomer(parsed);
+  }, [location.pathname]);
+
+  // Listen for storage changes (from other tabs or login)
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const saved = localStorage.getItem('yolmov_customer');
+      const parsed = saved ? JSON.parse(saved) : null;
+      setCustomer(parsed);
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem('yolmov_customer');
