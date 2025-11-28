@@ -1,18 +1,17 @@
 // Service Worker for YOLMOV PWA
-const CACHE_VERSION = 'v1.0.0';
+const CACHE_VERSION = 'v1.0.1';
 const CACHE_NAME = `yolmov-cache-${CACHE_VERSION}`;
 const OFFLINE_URL = '/offline.html';
 
 // Assets to cache immediately on install
+// Note: External CDN URLs should NOT be cached here (CORS issues)
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
   '/offline.html',
   '/manifest.json',
   '/icons/icon-192.png',
-  '/icons/icon-512.png',
-  'https://cdn.tailwindcss.com',
-  'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Poppins:wght@500;600;700;800&display=swap'
+  '/icons/icon-512.png'
 ];
 
 // Install event - cache essential assets
