@@ -38,8 +38,14 @@ const LoginPage: React.FC<LoginPageProps> = ({ userType }) => {
     try {
       if (mode === 'register' && isCustomer) {
         // ✅ YENİ MÜŞTERİ KAYDI - Supabase Auth ile
-        if (!email || !firstName || !lastName || !password) {
+        if (!email || !firstName || !lastName || !password || !phone) {
           setError('Lütfen tüm alanları doldurun');
+          setLoading(false);
+          return;
+        }
+
+        if (phone.length < 10) {
+          setError('Telefon numarası en az 10 karakter olmalıdır');
           setLoading(false);
           return;
         }
@@ -54,7 +60,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ userType }) => {
         const result = await supabaseApi.auth.signUpCustomer(email, password, {
           firstName,
           lastName,
-          phone: phone || '',
+          phone,
         });
         
         // Email confirmation mesajı göster
@@ -289,6 +295,27 @@ const LoginPage: React.FC<LoginPageProps> = ({ userType }) => {
                           placeholder="Soyadınız"
                           value={lastName}
                           onChange={(e) => setLastName(e.target.value)}
+                          required
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* Phone Field */}
+                    <div className="group">
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">
+                        Telefon
+                      </label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors text-gray-400 group-focus-within:text-brand-orange">
+                          <Phone size={18} />
+                        </div>
+                        <input
+                          type="tel"
+                          className="block w-full pl-11 pr-4 py-3.5 bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-xl focus:bg-white transition-all outline-none focus:ring-2 focus:ring-brand-orange/20 focus:border-brand-orange"
+                          placeholder="05321234567"
+                          value={phone}
+                          onChange={(e) => setPhone(e.target.value)}
+                          pattern="[0-9]{10,11}"
                           required
                         />
                       </div>
