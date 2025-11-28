@@ -33,39 +33,33 @@ const LoginPage: React.FC<LoginPageProps> = ({ userType }) => {
     setLoading(true);
     
     try {
-      // Email formatına çevir (phone number yerine)
-      const email = phone.includes('@') ? phone : `${phone}@yolmov.temp`;
-      
-      // Supabase Auth ile giriş
-      await supabaseApi.auth.signIn(email, password);
-      
-      // Kullanıcı rolünü kontrol et
-      const userRole = await supabaseApi.auth.getUserRole();
-      
-      if (isCustomer && userRole?.type === 'customer') {
-        // Müşteri hesabı - localStorage'a kaydet (geriye uyumluluk için)
-        const currentUser = await supabaseApi.auth.getCurrentUser();
-        const customerData = await supabaseApi.customers.getById(currentUser!.id);
-        if (customerData) {
-          localStorage.setItem('yolmov_customer', JSON.stringify(customerData));
+      // DEV MODE: Bypass Auth - doğrudan veritabanından test kullanıcılarını kullan
+      if (isCustomer) {
+        // Test müşterisi: 05321234567
+        const customers = await supabaseApi.customers.getAll();
+        const customer = customers.find(c => c.phone === phone || c.phone === '05321234567');
+        
+        if (customer) {
+          localStorage.setItem('yolmov_customer', JSON.stringify(customer));
+          navigate('/musteri/profil');
+        } else {
+          setError('Müşteri bulunamadı. Test telefonu: 05321234567');
         }
-        navigate('/musteri/profil');
-      } else if (!isCustomer && userRole?.type === 'partner') {
-        // Partner hesabı
-        const currentUser = await supabaseApi.auth.getCurrentUser();
-        const partnerData = await supabaseApi.partners.getById(currentUser!.id);
-        if (partnerData) {
-          localStorage.setItem('yolmov_partner', JSON.stringify(partnerData));
-        }
-        navigate('/partner');
       } else {
-        // Yanlış hesap tipi
-        setError(`Bu hesap ${isCustomer ? 'müşteri' : 'partner'} hesabı değil`);
-        await supabaseApi.auth.signOut();
+        // Test partneri: hizli@partner.com
+        const partners = await supabaseApi.partners.getAll();
+        const partner = partners.find(p => p.email === phone || p.email === 'hizli@partner.com');
+        
+        if (partner) {
+          localStorage.setItem('yolmov_partner', JSON.stringify(partner));
+          navigate('/partner');
+        } else {
+          setError('Partner bulunamadı. Test email: hizli@partner.com');
+        }
       }
     } catch (err: any) {
       console.error('Login error:', err);
-      setError(err.message || 'Telefon veya şifre hatalı!');
+      setError(err.message || 'Giriş başarısız!');
     } finally {
       setLoading(false);
     }
