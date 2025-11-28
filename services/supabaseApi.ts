@@ -72,6 +72,11 @@ export const authApi = {
    */
   signUpCustomer: async (email: string, password: string, customerData: Partial<Customer>) => {
     try {
+      // Telefon numarası validasyonu
+      if (!customerData.phone || customerData.phone.length < 10) {
+        throw new Error('Telefon numarası gerekli (minimum 10 karakter)');
+      }
+
       // 1. Auth kullanıcısı oluştur (Email confirmation otomatik gönderilir)
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
@@ -94,7 +99,7 @@ export const authApi = {
         id: authData.user.id,
         first_name: customerData.firstName || '',
         last_name: customerData.lastName || '',
-        phone: customerData.phone || '',
+        phone: customerData.phone, // Artık validasyon yapıldı, kesinlikle var
         email: email,
         avatar_url: customerData.avatarUrl || null,
         city: customerData.city || null,
@@ -107,7 +112,22 @@ export const authApi = {
         .select()
         .single();
 
-      if (customerError) throw customerError;
+      if (customerError) {
+        // Rollback: Auth user'ı sil
+        console.error('❌ Customer insert failed, rolling back auth user:', customerError);
+        await supabase.auth.admin.deleteUser(authData.user.id).catch(() => {});
+        
+        // Detaylı hata mesajı
+        if (customerError.code === '23505') {
+          if (customerError.message.includes('phone')) {
+            throw new Error('Bu telefon numarası zaten kayıtlı');
+          }
+          if (customerError.message.includes('email')) {
+            throw new Error('Bu email adresi zaten kayıtlı');
+          }
+        }
+        throw customerError;
+      }
 
       // snake_case → camelCase dönüşümü
       const customerCamelCase: Customer = {
@@ -200,6 +220,19 @@ export const authApi = {
       }
 
       if (!data.user) throw new Error('Giriş başarısız');
+
+      // Customer kaydının olup olmadığını kontrol et
+      const { data: customerCheck } = await supabase
+        .from('customers')
+        .select('id')
+        .eq('id', data.user.id)
+        .single();
+
+      if (!customerCheck) {
+        // Auth user var ama customer kaydı yok - kayıt tamamlanmamış
+        console.error('❌ Customer record not found for user:', data.user.id);
+        throw new Error('Kayıt işleminiz tamamlanmamış. Lütfen tekrar kayıt olmayı deneyin veya destek ile iletişime geçin.');
+      }
 
       return { user: data.user, session: data.session };
     } catch (error: any) {
