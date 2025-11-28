@@ -17,24 +17,40 @@ const Header: React.FC<HeaderProps> = () => {
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
+  const [lastUserId, setLastUserId] = useState<string | null>(null);
 
-  // Supabase session kontrolü
+  // Supabase session kontrolü - sadece bir kez çalışır
   useEffect(() => {
+    let isMounted = true;
+    
+    const loadCustomer = async (userId: string) => {
+      // Aynı kullanıcı için tekrar yükleme yapma
+      if (userId === lastUserId) return;
+      
+      try {
+        const customerData = await supabaseApi.customers.getById(userId);
+        if (isMounted && customerData) {
+          setCustomer(customerData);
+          setLastUserId(userId);
+        }
+      } catch (error) {
+        console.error('Customer yükleme hatası:', error);
+      }
+    };
+
     const checkSession = async () => {
       try {
         const session = await supabaseApi.auth.getSession();
         if (session?.user) {
-          // Customer bilgilerini DB'den çek
-          const customerData = await supabaseApi.customers.getById(session.user.id);
-          setCustomer(customerData);
+          await loadCustomer(session.user.id);
         } else {
-          setCustomer(null);
+          if (isMounted) setCustomer(null);
         }
       } catch (error) {
         console.error('Session kontrol hatası:', error);
-        setCustomer(null);
+        if (isMounted) setCustomer(null);
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
 
@@ -42,31 +58,25 @@ const Header: React.FC<HeaderProps> = () => {
 
     // Auth state değişikliklerini dinle
     const { data: { subscription } } = supabaseApi.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth event:', event);
+      // Sadece gerçek değişiklikleri işle
       if (event === 'SIGNED_IN' && session?.user) {
-        const customerData = await supabaseApi.customers.getById(session.user.id);
-        setCustomer(customerData);
+        // Zaten aynı kullanıcı yüklüyse tekrar yükleme
+        if (session.user.id !== lastUserId) {
+          await loadCustomer(session.user.id);
+        }
       } else if (event === 'SIGNED_OUT') {
-        setCustomer(null);
+        if (isMounted) {
+          setCustomer(null);
+          setLastUserId(null);
+        }
       }
     });
 
     return () => {
+      isMounted = false;
       subscription.unsubscribe();
     };
-  }, []);
-
-  // Route değişikliğinde de kontrol et (backup)
-  useEffect(() => {
-    const recheckSession = async () => {
-      const session = await supabaseApi.auth.getSession();
-      if (session?.user) {
-        const customerData = await supabaseApi.customers.getById(session.user.id);
-        setCustomer(customerData);
-      }
-    };
-    recheckSession();
-  }, [location.pathname]);
+  }, [lastUserId]);
 
   const handleLogout = async () => {
     try {
