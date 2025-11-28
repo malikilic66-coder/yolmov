@@ -36,7 +36,9 @@ import {
   deleteRoute,
   getJobsByPartner,
   initializeMockData,
-  getOpenRequestsForPartner
+  getOpenRequestsForPartner,
+  completeRequestByPartner,
+  getOffersForRequest
 } from '../services/mockApi';
 import { motion, AnimatePresence } from 'framer-motion';
 import PartnerOfferHistory from './PartnerOfferHistory';
@@ -455,9 +457,18 @@ const PartnerDashboard: React.FC = () => {
   }, []);
 
    // Load all open customer requests for partner to see (from mockApi)
+   // Her 10 saniyede bir güncelle - müşteri iptal ettiğinde listeden düşsün
    useEffect(() => {
-      const reqs = getOpenRequestsForPartner();
-      setCustomerRequests(reqs);
+      const loadRequests = () => {
+        const reqs = getOpenRequestsForPartner();
+        setCustomerRequests(reqs);
+        console.log('🔄 [PartnerDashboard] Refreshed open requests:', reqs.length);
+      };
+      
+      loadRequests(); // İlk yükleme
+      
+      const interval = setInterval(loadRequests, 10000); // 10 saniyede bir
+      return () => clearInterval(interval);
    }, []);
 
   // Filter Logic
@@ -532,12 +543,14 @@ const PartnerDashboard: React.FC = () => {
 
    const handleSubmitCustomerOffer = () => {
       if (!selectedRequestForOffer || !offerPrice) return;
+      console.log('🟢 [PartnerDashboard] Creating offer for request:', selectedRequestForOffer.id);
       // Persist offer to localStorage so B2C panel can see it
-      createOffer('PARTNER-DEMO', selectedRequestForOffer.id, {
+      const createdOffer = createOffer('PARTNER-DEMO', selectedRequestForOffer.id, {
          price: parseFloat(offerPrice),
          etaMinutes: offerEta ? parseInt(offerEta) : 30,
          message: offerMessage
       });
+      console.log('🟢 [PartnerDashboard] Created offer:', createdOffer);
       alert('Teklif gönderildi. Müşteri yanıtını bekleyebilirsiniz.');
       setSelectedRequestForOffer(null);
       setOfferPrice('');
@@ -582,6 +595,18 @@ const PartnerDashboard: React.FC = () => {
   };
 
   const handleFinishJob = () => {
+    // B2C iş ise, request'i 'completed' olarak işaretle
+    if (activeJob && (activeJob as any)._originalRequest) {
+      const originalRequest = (activeJob as any)._originalRequest as Request;
+      // Bu request için kabul edilmiş offer'ı bul
+      const offers = getOffersForRequest(originalRequest.id);
+      const acceptedOffer = offers.find(o => o.status === 'accepted');
+      if (acceptedOffer) {
+        completeRequestByPartner(originalRequest.id, acceptedOffer.id);
+        console.log('✅ [PartnerDashboard] B2C request completed:', originalRequest.id);
+      }
+    }
+    
     setShowRatingModal(false);
     setActiveJob(null);
     setActiveTab('requests');
@@ -1500,6 +1525,76 @@ const PartnerDashboard: React.FC = () => {
               <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
                 <p className="text-xs font-bold text-yellow-800 uppercase mb-2">Notlar</p>
                 <p className="text-sm text-slate-700">{job.notes}</p>
+              </div>
+            )}
+
+            {/* B2C Genişletilmiş Bilgiler - Sadece _originalRequest varsa */}
+            {job._originalRequest && (
+              <div className="space-y-4 pt-4 border-t border-slate-200">
+                <h4 className="text-sm font-bold text-slate-600 uppercase">Detaylı Müşteri Bilgileri</h4>
+                
+                {/* Araç Durumu */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-3 bg-slate-50 rounded-xl">
+                    <p className="text-xs font-bold text-slate-500 uppercase mb-1">Araç Durumu</p>
+                    <p className={`font-bold ${job._originalRequest.vehicleCondition === 'broken' ? 'text-red-600' : 'text-green-600'}`}>
+                      {job._originalRequest.vehicleCondition === 'broken' ? '🔴 Arızalı/Kazalı' : '🟢 Çalışır Durumda'}
+                    </p>
+                  </div>
+                  <div className="p-3 bg-slate-50 rounded-xl">
+                    <p className="text-xs font-bold text-slate-500 uppercase mb-1">Zamanlama</p>
+                    <p className="font-bold text-slate-800">
+                      {job._originalRequest.timing === 'now' && '⚡ Hemen'}
+                      {job._originalRequest.timing === 'week' && '📅 Bu Hafta'}
+                      {job._originalRequest.timing === 'later' && '🗓️ Daha Sonra'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Yük Bilgisi */}
+                {job._originalRequest.hasLoad && (
+                  <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                    <p className="text-xs font-bold text-amber-800 uppercase mb-2">⚠️ Yük Bilgisi</p>
+                    <p className="font-bold text-amber-700">Araçta yük bulunuyor</p>
+                    {job._originalRequest.loadDescription && (
+                      <p className="text-sm text-amber-600 mt-1">{job._originalRequest.loadDescription}</p>
+                    )}
+                  </div>
+                )}
+
+                {/* Hasar Fotoğrafları */}
+                {job._originalRequest.damagePhotoUrls && job._originalRequest.damagePhotoUrls.length > 0 && (
+                  <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                    <p className="text-xs font-bold text-slate-600 uppercase mb-3">📷 Hasar Fotoğrafları ({job._originalRequest.damagePhotoUrls.length})</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {job._originalRequest.damagePhotoUrls.slice(0, 6).map((url, idx) => (
+                        <img 
+                          key={idx} 
+                          src={url} 
+                          alt={`Hasar ${idx + 1}`} 
+                          className="w-full h-20 object-cover rounded-lg border border-slate-200 cursor-pointer hover:opacity-80"
+                          onClick={() => window.open(url, '_blank')}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Müşteri İletişim */}
+                {job._originalRequest.customerPhone && (
+                  <div className="p-4 bg-green-50 border border-green-200 rounded-xl flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-bold text-green-700 uppercase mb-1">Müşteri Telefonu</p>
+                      <p className="font-bold text-green-800">{job._originalRequest.customerPhone}</p>
+                    </div>
+                    <a 
+                      href={`tel:${job._originalRequest.customerPhone}`}
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg font-bold text-sm hover:bg-green-700 flex items-center gap-2"
+                    >
+                      <Phone size={16} /> Ara
+                    </a>
+                  </div>
+                )}
               </div>
             )}
 

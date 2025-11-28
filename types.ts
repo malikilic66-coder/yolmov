@@ -101,6 +101,14 @@ export interface Request {
   status: 'open' | 'matched' | 'completed' | 'cancelled';
   createdAt: string;
   amount?: number; // Tamamlanan işler için tutar
+  
+  // Genişletilmiş alanlar (QuoteWizard'dan)
+  vehicleCondition?: 'running' | 'broken'; // Araç çalışır/arızalı durumu
+  hasLoad?: boolean; // Yük var mı?
+  loadDescription?: string; // Yük açıklaması
+  damagePhotoUrls?: string[]; // Hasar fotoğrafları (base64 veya URL)
+  timing?: 'now' | 'week' | 'later'; // Zamanlama
+  customerPhone?: string; // Müşteri telefonu
 }
 
 // B2B Offer (Teklif) yapısı

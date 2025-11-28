@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Customer, Request, Offer } from '../types';
-import { seedDemoRequests, getRequestsByCustomer, getOffersForRequest, acceptOffer, rejectOffer } from '../services/mockApi';
-import { ArrowLeft, MapPin, CheckCircle2, XCircle, Clock, Handshake, FilePlus, Check, X, RefreshCcw, Eye, User, Phone, Navigation, ShieldCheck, DollarSign } from 'lucide-react';
+import { seedDemoRequests, getRequestsByCustomer, getOffersForRequest, acceptOffer, rejectOffer, cancelRequest } from '../services/mockApi';
+import { ArrowLeft, MapPin, CheckCircle2, XCircle, Clock, Handshake, FilePlus, Check, X, RefreshCcw, Eye, User, Phone, Navigation, ShieldCheck, DollarSign, Ban, Star, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const statusBadge = (status: Request['status']) => {
@@ -55,19 +55,33 @@ const OffersPanel: React.FC = () => {
   const [offers, setOffers] = useState<Offer[]>([]);
   const [loadingOffers, setLoadingOffers] = useState(false);
   const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null);
+  
+  // Yeni state'ler: İptal ve Değerlendirme
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [ratingValue, setRatingValue] = useState(0);
+  const [ratingComment, setRatingComment] = useState('');
+  const [requestToCancel, setRequestToCancel] = useState<Request | null>(null);
+  const [requestToRate, setRequestToRate] = useState<Request | null>(null);
 
   useEffect(() => {
     if (customer) {
+      console.log('🔵 [OffersPanel] Customer ID:', customer.id);
       seedDemoRequests(customer.id);
-      setRequests(getRequestsByCustomer(customer.id));
+      const customerRequests = getRequestsByCustomer(customer.id);
+      console.log('🔵 [OffersPanel] Loaded Requests:', customerRequests);
+      setRequests(customerRequests);
     }
   }, [customer]);
 
   const loadOffers = (req: Request) => {
     setSelectedRequest(req);
     setLoadingOffers(true);
+    console.log('🟡 [OffersPanel] Loading offers for request:', req.id);
     setTimeout(() => { // simulate latency
-      setOffers(getOffersForRequest(req.id));
+      const requestOffers = getOffersForRequest(req.id);
+      console.log('🟡 [OffersPanel] Found offers:', requestOffers);
+      setOffers(requestOffers);
       setLoadingOffers(false);
     }, 300);
   };
@@ -83,6 +97,56 @@ const OffersPanel: React.FC = () => {
   const handleReject = (offerId: string) => {
     rejectOffer(offerId);
     if (selectedRequest) setOffers(getOffersForRequest(selectedRequest.id));
+  };
+
+  // Müşteri talep iptal handler'ı
+  const handleCancelRequest = (req: Request) => {
+    setRequestToCancel(req);
+    setShowCancelConfirm(true);
+  };
+
+  const confirmCancelRequest = () => {
+    if (!requestToCancel || !customer) return;
+    const success = cancelRequest(requestToCancel.id);
+    if (success) {
+      setRequests(getRequestsByCustomer(customer.id));
+      if (selectedRequest?.id === requestToCancel.id) {
+        setSelectedRequest(null);
+        setOffers([]);
+      }
+      alert('Talep iptal edildi.');
+    } else {
+      alert('Bu talep iptal edilemez. Sadece açık talepler iptal edilebilir.');
+    }
+    setShowCancelConfirm(false);
+    setRequestToCancel(null);
+  };
+
+  // Müşteri değerlendirme handler'ı
+  const handleOpenRating = (req: Request) => {
+    setRequestToRate(req);
+    setRatingValue(0);
+    setRatingComment('');
+    setShowRatingModal(true);
+  };
+
+  const handleSubmitRating = () => {
+    if (!requestToRate || ratingValue === 0) {
+      alert('Lütfen bir puan seçin.');
+      return;
+    }
+    // Rating'i localStorage'a kaydet
+    const ratings = JSON.parse(localStorage.getItem('yolmov_customer_ratings') || '[]');
+    ratings.push({
+      requestId: requestToRate.id,
+      rating: ratingValue,
+      comment: ratingComment,
+      createdAt: new Date().toISOString()
+    });
+    localStorage.setItem('yolmov_customer_ratings', JSON.stringify(ratings));
+    alert('Değerlendirmeniz için teşekkürler!');
+    setShowRatingModal(false);
+    setRequestToRate(null);
   };
 
   return (
@@ -110,17 +174,49 @@ const OffersPanel: React.FC = () => {
               )}
               <div className="space-y-3">
                 {requests.map(r => (
-                  <div key={r.id} onClick={() => loadOffers(r)} className={`p-4 rounded-xl border cursor-pointer transition-all group ${selectedRequest?.id === r.id ? 'border-brand-orange bg-orange-50/60' : 'border-gray-100 hover:border-brand-orange hover:bg-orange-50/40'}`}> 
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="font-bold text-sm text-gray-800 group-hover:text-brand-orange capitalize">{r.serviceType}</p>
-                        <p className="text-xs text-gray-400 mt-0.5">#{r.id} • {new Date(r.createdAt).toLocaleString('tr-TR')}</p>
+                  <div key={r.id} className={`p-4 rounded-xl border transition-all group ${selectedRequest?.id === r.id ? 'border-brand-orange bg-orange-50/60' : 'border-gray-100 hover:border-brand-orange hover:bg-orange-50/40'}`}> 
+                    <div onClick={() => loadOffers(r)} className="cursor-pointer">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="font-bold text-sm text-gray-800 group-hover:text-brand-orange capitalize">{r.serviceType}</p>
+                          <p className="text-xs text-gray-400 mt-0.5">#{r.id} • {new Date(r.createdAt).toLocaleString('tr-TR')}</p>
+                        </div>
+                        <span className={statusBadge(r.status)}>
+                          {r.status === 'open' && 'Açık'}
+                          {r.status === 'matched' && 'Eşleşti'}
+                          {r.status === 'completed' && 'Tamamlandı'}
+                          {r.status === 'cancelled' && 'İptal'}
+                        </span>
                       </div>
-                      <span className={statusBadge(r.status)}>{r.status}</span>
+                      <p className="text-xs text-gray-500 mt-2 line-clamp-2">{r.description}</p>
+                      <div className="flex items-center gap-2 mt-2 text-[11px] text-gray-500">
+                        <MapPin size={12} className="text-brand-orange" /> {r.fromLocation} {r.toLocation && (<><span className="text-gray-400">→</span> {r.toLocation}</>)}
+                      </div>
                     </div>
-                    <p className="text-xs text-gray-500 mt-2 line-clamp-2">{r.description}</p>
-                    <div className="flex items-center gap-2 mt-2 text-[11px] text-gray-500">
-                      <MapPin size={12} className="text-brand-orange" /> {r.fromLocation} {r.toLocation && (<><span className="text-gray-400">→</span> {r.toLocation}</>)}
+                    {/* Action Buttons - İptal ve Değerlendirme */}
+                    <div className="flex gap-2 mt-3 pt-3 border-t border-gray-100">
+                      {r.status === 'open' && (
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); handleCancelRequest(r); }}
+                          className="flex-1 px-3 py-2 rounded-lg bg-red-50 text-red-600 text-xs font-bold flex items-center justify-center gap-1 hover:bg-red-100"
+                        >
+                          <Ban size={12}/> İptal Et
+                        </button>
+                      )}
+                      {r.status === 'completed' && (
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); handleOpenRating(r); }}
+                          className="flex-1 px-3 py-2 rounded-lg bg-yellow-50 text-yellow-700 text-xs font-bold flex items-center justify-center gap-1 hover:bg-yellow-100"
+                        >
+                          <Star size={12}/> Değerlendir
+                        </button>
+                      )}
+                      {r.status === 'cancelled' && (
+                        <span className="flex-1 px-3 py-2 text-center text-xs text-gray-400">İptal edildi</span>
+                      )}
+                      {r.status === 'matched' && (
+                        <span className="flex-1 px-3 py-2 text-center text-xs text-blue-500 font-bold">Partner eşleşti</span>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -341,6 +437,114 @@ const OffersPanel: React.FC = () => {
                     </button>
                   </div>
                 )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Cancel Confirmation Modal */}
+      <AnimatePresence>
+        {showCancelConfirm && requestToCancel && (
+          <div 
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+            onClick={() => setShowCancelConfirm(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6"
+            >
+              <div className="text-center">
+                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <AlertTriangle size={32} className="text-red-500" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">Talebi İptal Et</h3>
+                <p className="text-sm text-gray-600 mb-6">
+                  <strong className="text-gray-800">#{requestToCancel.id}</strong> numaralı talebi iptal etmek istediğinize emin misiniz? Bu işlem geri alınamaz.
+                </p>
+                <div className="flex gap-3">
+                  <button 
+                    onClick={() => setShowCancelConfirm(false)}
+                    className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200"
+                  >
+                    Vazgeç
+                  </button>
+                  <button 
+                    onClick={confirmCancelRequest}
+                    className="flex-1 px-4 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700"
+                  >
+                    İptal Et
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Rating Modal */}
+      <AnimatePresence>
+        {showRatingModal && requestToRate && (
+          <div 
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+            onClick={() => setShowRatingModal(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6"
+            >
+              <div className="text-center">
+                <h3 className="text-xl font-bold text-gray-900 mb-2">Hizmeti Değerlendir</h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  <strong className="capitalize">{requestToRate.serviceType}</strong> hizmeti için puanınızı verin
+                </p>
+                
+                {/* Star Rating */}
+                <div className="flex justify-center gap-2 mb-6">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      onClick={() => setRatingValue(star)}
+                      className="transition-transform hover:scale-110"
+                    >
+                      <Star 
+                        size={36} 
+                        className={star <= ratingValue ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}
+                      />
+                    </button>
+                  ))}
+                </div>
+
+                {/* Comment */}
+                <textarea
+                  value={ratingComment}
+                  onChange={(e) => setRatingComment(e.target.value)}
+                  placeholder="Yorumunuzu yazın (opsiyonel)"
+                  className="w-full p-3 border border-gray-200 rounded-xl text-sm resize-none focus:ring-2 focus:ring-brand-orange focus:border-transparent"
+                  rows={3}
+                />
+
+                <div className="flex gap-3 mt-6">
+                  <button 
+                    onClick={() => setShowRatingModal(false)}
+                    className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200"
+                  >
+                    Vazgeç
+                  </button>
+                  <button 
+                    onClick={handleSubmitRating}
+                    disabled={ratingValue === 0}
+                    className={`flex-1 px-4 py-3 rounded-xl font-bold ${ratingValue > 0 ? 'bg-brand-orange text-white hover:bg-orange-600' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                  >
+                    Gönder
+                  </button>
+                </div>
               </div>
             </motion.div>
           </div>

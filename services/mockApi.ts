@@ -150,6 +150,52 @@ export function updateRequestStatus(requestId: string, status: Request['status']
   }
 }
 
+/**
+ * Müşteri tarafından talep iptal edildiğinde çağrılır
+ * İlgili tüm teklifleri de 'withdrawn' yapar
+ */
+export function cancelRequest(requestId: string): boolean {
+  const requests = load<Request>(LS_KEYS.requests);
+  const idx = requests.findIndex(r => r.id === requestId);
+  if (idx < 0) return false;
+  
+  // Sadece 'open' durumdaki talepler iptal edilebilir
+  if (requests[idx].status !== 'open') return false;
+  
+  requests[idx].status = 'cancelled';
+  save(LS_KEYS.requests, requests);
+  
+  // Bu talebe ait tüm teklifleri geri çek
+  const offers = load<Offer>(LS_KEYS.offers);
+  offers.forEach(o => {
+    if (o.requestId === requestId && o.status === 'sent') {
+      o.status = 'withdrawn';
+    }
+  });
+  save(LS_KEYS.offers, offers);
+  
+  console.log('🔴 [mockApi] Request cancelled:', requestId);
+  return true;
+}
+
+/**
+ * Partner tarafından iş tamamlandığında çağrılır
+ */
+export function completeRequestByPartner(requestId: string, offerId: string): boolean {
+  const requests = load<Request>(LS_KEYS.requests);
+  const idx = requests.findIndex(r => r.id === requestId);
+  if (idx < 0) return false;
+  
+  // Sadece 'matched' durumdaki talepler tamamlanabilir
+  if (requests[idx].status !== 'matched') return false;
+  
+  requests[idx].status = 'completed';
+  save(LS_KEYS.requests, requests);
+  
+  console.log('✅ [mockApi] Request completed:', requestId);
+  return true;
+}
+
 // OFFERS
 export function createOffer(partnerId: string, requestId: string, data: Omit<Offer,'id'|'createdAt'|'status'|'partnerId'|'requestId'> & { status?: Offer['status'] }): Offer {
   const offers = load<Offer>(LS_KEYS.offers);
@@ -203,8 +249,10 @@ export function withdrawOffer(offerId: string) {
 
 // SEED helper (for development)
 export function seedDemoRequests(customerId: string) {
-  if (getRequestsByCustomer(customerId).length > 0) return; // already seeded
-  createMockRequest({
+  const existingRequests = getRequestsByCustomer(customerId);
+  console.log('🔴 [mockApi] seedDemoRequests called for:', customerId, 'Existing:', existingRequests.length);
+  if (existingRequests.length > 0) return; // already seeded
+  const req1 = createMockRequest({
     customerId,
     serviceType: 'cekici',
     description: 'Aracım çalışmıyor, çekici gerekiyor',
@@ -212,13 +260,15 @@ export function seedDemoRequests(customerId: string) {
     toLocation: 'Maltepe Servis',
     vehicleInfo: 'Renault Clio 2016'
   });
-  createMockRequest({
+  console.log('🔴 [mockApi] Created demo request 1:', req1.id);
+  const req2 = createMockRequest({
     customerId,
     serviceType: 'aku',
     description: 'Akü tamamen bitti takviye gerekiyor',
     fromLocation: 'Beşiktaş, İstanbul',
     vehicleInfo: 'BMW 3.20 2019'
   });
+  console.log('🔴 [mockApi] Created demo request 2:', req2.id);
 }
 
 // ============================================

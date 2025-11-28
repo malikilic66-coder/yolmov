@@ -176,15 +176,25 @@ const QuoteWizard: React.FC = () => {
         // Vehicle info
         const vehicleInfo = `${formData.make} ${formData.model} ${formData.year}`;
         
+        // Hasar fotoğraflarını base64'e çevir (Partner görsün diye)
+        const damagePhotoUrls = photoPreviewUrls.length > 0 ? photoPreviewUrls : undefined;
+        
         try {
-          // Create request in mockApi
+          // Create request in mockApi with extended fields
           const newRequest = createMockRequest({
             customerId,
             serviceType: serviceTypeMap[formData.serviceType] || 'cekici',
             description,
             fromLocation,
             toLocation,
-            vehicleInfo
+            vehicleInfo,
+            // Yeni genişletilmiş alanlar
+            vehicleCondition: formData.condition as 'running' | 'broken',
+            hasLoad: formData.hasLoad,
+            loadDescription: formData.loadDescription || undefined,
+            damagePhotoUrls,
+            timing: formData.timing as 'now' | 'week' | 'later',
+            customerPhone: formData.phone || customer?.phone
           });
           
           console.log('✅ Teklif talebi oluşturuldu:', newRequest);
