@@ -17,21 +17,21 @@ const Header: React.FC<HeaderProps> = () => {
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
-  const [lastUserId, setLastUserId] = useState<string | null>(null);
 
   // Supabase session kontrolü - sadece bir kez çalışır
   useEffect(() => {
     let isMounted = true;
+    let currentUserId: string | null = null;
     
     const loadCustomer = async (userId: string) => {
       // Aynı kullanıcı için tekrar yükleme yapma
-      if (userId === lastUserId) return;
+      if (userId === currentUserId) return;
       
       try {
         const customerData = await supabaseApi.customers.getById(userId);
         if (isMounted && customerData) {
           setCustomer(customerData);
-          setLastUserId(userId);
+          currentUserId = userId;
         }
       } catch (error) {
         console.error('Customer yükleme hatası:', error);
@@ -58,17 +58,17 @@ const Header: React.FC<HeaderProps> = () => {
 
     // Auth state değişikliklerini dinle
     const { data: { subscription } } = supabaseApi.auth.onAuthStateChange(async (event, session) => {
+      if (!isMounted) return;
+      
       // Sadece gerçek değişiklikleri işle
       if (event === 'SIGNED_IN' && session?.user) {
         // Zaten aynı kullanıcı yüklüyse tekrar yükleme
-        if (session.user.id !== lastUserId) {
+        if (session.user.id !== currentUserId) {
           await loadCustomer(session.user.id);
         }
       } else if (event === 'SIGNED_OUT') {
-        if (isMounted) {
-          setCustomer(null);
-          setLastUserId(null);
-        }
+        setCustomer(null);
+        currentUserId = null;
       }
     });
 
@@ -76,7 +76,7 @@ const Header: React.FC<HeaderProps> = () => {
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, [lastUserId]);
+  }, []); // Boş dependency array - sadece mount'ta çalışır
 
   const handleLogout = async () => {
     try {

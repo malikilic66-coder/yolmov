@@ -389,14 +389,25 @@ const LoginPage: React.FC<LoginPageProps> = ({ userType }) => {
 
                 {/* Action Button */}
                 <button 
-                  className={`w-full py-4 rounded-xl font-bold text-white shadow-lg transition-all transform hover:-translate-y-0.5 active:scale-95 flex items-center justify-center gap-2 mt-6 ${
+                  type="submit"
+                  disabled={loading}
+                  className={`w-full py-4 rounded-xl font-bold text-white shadow-lg transition-all transform hover:-translate-y-0.5 active:scale-95 flex items-center justify-center gap-2 mt-6 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none ${
                      isCustomer 
                      ? 'bg-gradient-to-r from-brand-orange to-brand-lightOrange shadow-orange-200' 
                      : 'bg-gradient-to-r from-blue-600 to-blue-500 shadow-blue-200'
                   }`}
                 >
-                  {mode === 'login' ? 'Giriş Yap' : 'Hesap Oluştur'}
-                  <ArrowRight size={18} />
+                  {loading ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <span>İşleniyor...</span>
+                    </>
+                  ) : (
+                    <>
+                      {mode === 'login' ? 'Giriş Yap' : 'Hesap Oluştur'}
+                      <ArrowRight size={18} />
+                    </>
+                  )}
                 </button>
               </motion.div>
             </AnimatePresence>
