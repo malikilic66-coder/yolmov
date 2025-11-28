@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Customer, Request, Offer } from '../types';
-import { seedDemoRequests, getRequestsByCustomer, getOffersForRequest, acceptOffer, rejectOffer, cancelRequest } from '../services/mockApi';
+import { seedDemoRequests, getRequestsByCustomer, getOffersForRequest, acceptOffer, rejectOffer, cancelRequest, getRequestById, createReview } from '../services/mockApi';
 import { ArrowLeft, MapPin, CheckCircle2, XCircle, Clock, Handshake, FilePlus, Check, X, RefreshCcw, Eye, User, Phone, Navigation, ShieldCheck, DollarSign, Ban, Star, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -10,6 +10,7 @@ const statusBadge = (status: Request['status']) => {
   switch (status) {
     case 'open': return base + ' bg-blue-50 text-blue-600';
     case 'matched': return base + ' bg-green-50 text-green-600';
+    case 'in_progress': return base + ' bg-yellow-50 text-yellow-600';
     case 'completed': return base + ' bg-gray-100 text-gray-600';
     case 'cancelled': return base + ' bg-red-50 text-red-600';
     default: return base + ' bg-gray-50 text-gray-500';
@@ -71,8 +72,24 @@ const OffersPanel: React.FC = () => {
       const customerRequests = getRequestsByCustomer(customer.id);
       console.log('🔵 [OffersPanel] Loaded Requests:', customerRequests);
       setRequests(customerRequests);
+      
+      // Otomatik yenileme - Partner ilerlemesini takip et
+      const refreshInterval = setInterval(() => {
+        const updatedRequests = getRequestsByCustomer(customer.id);
+        setRequests(updatedRequests);
+        
+        // Seçili request varsa onu da güncelle
+        if (selectedRequest) {
+          const updated = getRequestById(selectedRequest.id);
+          if (updated) {
+            setSelectedRequest(updated);
+          }
+        }
+      }, 5000); // Her 5 saniyede bir yenile
+      
+      return () => clearInterval(refreshInterval);
     }
-  }, [customer]);
+  }, [customer, selectedRequest?.id]);
 
   const loadOffers = (req: Request) => {
     setSelectedRequest(req);
@@ -135,15 +152,24 @@ const OffersPanel: React.FC = () => {
       alert('Lütfen bir puan seçin.');
       return;
     }
-    // Rating'i localStorage'a kaydet
-    const ratings = JSON.parse(localStorage.getItem('yolmov_customer_ratings') || '[]');
-    ratings.push({
-      requestId: requestToRate.id,
+    
+    // Partner bilgisini request'ten al
+    const partnerId = requestToRate.assignedPartnerId || 'UNKNOWN';
+    const partnerName = requestToRate.assignedPartnerName || 'Partner';
+    
+    // mockApi.createReview kullanarak kaydet
+    createReview({
+      jobId: requestToRate.id,
+      partnerId: partnerId,
+      partnerName: partnerName,
+      customerId: customer?.id || 'UNKNOWN',
+      customerName: customer?.name || 'Müşteri',
+      service: requestToRate.serviceType,
       rating: ratingValue,
       comment: ratingComment,
-      createdAt: new Date().toISOString()
+      tags: [] // Müşteri tarafında tag seçimi yok şu an
     });
-    localStorage.setItem('yolmov_customer_ratings', JSON.stringify(ratings));
+    
     alert('Değerlendirmeniz için teşekkürler!');
     setShowRatingModal(false);
     setRequestToRate(null);
@@ -184,6 +210,7 @@ const OffersPanel: React.FC = () => {
                         <span className={statusBadge(r.status)}>
                           {r.status === 'open' && 'Açık'}
                           {r.status === 'matched' && 'Eşleşti'}
+                          {r.status === 'in_progress' && 'Yolda'}
                           {r.status === 'completed' && 'Tamamlandı'}
                           {r.status === 'cancelled' && 'İptal'}
                         </span>
@@ -216,6 +243,27 @@ const OffersPanel: React.FC = () => {
                       )}
                       {r.status === 'matched' && (
                         <span className="flex-1 px-3 py-2 text-center text-xs text-blue-500 font-bold">Partner eşleşti</span>
+                      )}
+                      {r.status === 'in_progress' && (
+                        <div className="flex-1 flex flex-col gap-1">
+                          <span className="text-xs text-yellow-600 font-bold text-center">
+                            🚚 {r.assignedPartnerName || 'Partner'} yolda
+                          </span>
+                          {r.jobStage !== undefined && (
+                            <div className="flex items-center gap-1 justify-center">
+                              {[0,1,2,3,4].map(s => (
+                                <div key={s} className={`w-6 h-1.5 rounded-full ${s <= (r.jobStage || 0) ? 'bg-yellow-500' : 'bg-gray-200'}`} />
+                              ))}
+                            </div>
+                          )}
+                          <span className="text-[10px] text-gray-500 text-center">
+                            {r.jobStage === 0 && 'Yola çıktı'}
+                            {r.jobStage === 1 && 'Konuma vardı'}
+                            {r.jobStage === 2 && 'Yükleme yapılıyor'}
+                            {r.jobStage === 3 && 'Teslimat yolunda'}
+                            {r.jobStage === 4 && 'Tamamlandı'}
+                          </span>
+                        </div>
                       )}
                     </div>
                   </div>

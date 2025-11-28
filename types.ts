@@ -98,9 +98,15 @@ export interface Request {
   fromLocation: string;
   toLocation?: string;
   vehicleInfo?: string;
-  status: 'open' | 'matched' | 'completed' | 'cancelled';
+  status: 'open' | 'matched' | 'completed' | 'cancelled' | 'in_progress';
   createdAt: string;
   amount?: number; // Tamamlanan işler için tutar
+  
+  // İş takibi alanları (Partner yola çıktığında doldurulur)
+  jobStage?: 0 | 1 | 2 | 3 | 4; // 0: Yola çıkıldı, 1: Varış, 2: Yükleme, 3: Teslimat, 4: Tamamlandı
+  assignedPartnerId?: string; // İşi üstlenen partner ID
+  assignedPartnerName?: string; // İşi üstlenen partner adı
+  stageUpdatedAt?: string; // Son aşama güncellemesi
   
   // Genişletilmiş alanlar (QuoteWizard'dan)
   vehicleCondition?: 'running' | 'broken'; // Araç çalışır/arızalı durumu

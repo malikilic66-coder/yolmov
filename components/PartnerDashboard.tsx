@@ -13,7 +13,7 @@ import {
   Truck, Headphones, Plus, PenTool, Wrench, LifeBuoy, Route, MoreHorizontal,
   Grid, LayoutList, Zap, Send, Star, ThumbsUp, ThumbsDown, Building, ShieldCheck, CheckCircle2, HelpCircle
 } from 'lucide-react';
-import { JobRequest, Request } from '../types';
+import { JobRequest, Request, CompletedJob } from '../types';
 import { MOCK_PARTNER_REQUESTS, CITIES_WITH_DISTRICTS } from '../constants';
 import { 
   createOffer, 
@@ -38,7 +38,10 @@ import {
   initializeMockData,
   getOpenRequestsForPartner,
   completeRequestByPartner,
-  getOffersForRequest
+  getOffersForRequest,
+  startJobByPartner,
+  updateJobStage,
+  getRequestById
 } from '../services/mockApi';
 import { motion, AnimatePresence } from 'framer-motion';
 import PartnerOfferHistory from './PartnerOfferHistory';
@@ -48,16 +51,6 @@ import { compressImage, isImageFile, createPreviewUrl } from '../utils/imageComp
 
 // Initialize mock data on component load
 initializeMockData();
-
-// MOCK HISTORY DATA
-const MOCK_HISTORY = [
-  { id: 'JOB-4923', date: '22 Kas, 14:30', service: 'Çekici Hizmeti', route: 'Maslak > Levent', customer: 'Ahmet Yılmaz', price: 850, status: 'completed', earnings: 850 },
-  { id: 'JOB-4922', date: '21 Kas, 09:15', service: 'Akü Takviyesi', route: 'Beşiktaş (Yerinde)', customer: 'Selin Kaya', price: 400, status: 'completed', earnings: 400 },
-  { id: 'JOB-4921', date: '20 Kas, 23:45', Lastik: 'Lastik Değişimi', route: 'TEM Otoyolu', customer: 'Mehmet Demir', price: 600, status: 'cancelled', earnings: 0 },
-  { id: 'JOB-4920', date: '19 Kas, 11:20', service: 'Çekici Hizmeti', route: 'Kadıköy > Ümraniye', customer: 'Caner Erkin', price: 1200, status: 'completed', earnings: 1200 },
-  { id: 'JOB-4919', date: '18 Kas, 16:40', service: 'Yakıt Desteği', route: 'E-5 Merter', customer: 'Zeynep A.', price: 350, status: 'refunded', earnings: 0 },
-  { id: 'JOB-4918', date: '15 Kas, 10:00', service: 'Çekici Hizmeti', route: 'Bostancı > Kartal', customer: 'Burak Y.', price: 900, status: 'completed', earnings: 900 },
-];
 
 // MOCK TRANSACTIONS FOR WALLET
 const MOCK_TRANSACTIONS = [
@@ -257,7 +250,8 @@ const PartnerDashboard: React.FC = () => {
   // History State
   const [historySearch, setHistorySearch] = useState('');
   const [historyFilter, setHistoryFilter] = useState('month');
-  const [selectedHistoryItem, setSelectedHistoryItem] = useState<typeof MOCK_HISTORY[0] | null>(null);
+  const [selectedHistoryItem, setSelectedHistoryItem] = useState<CompletedJob | null>(null);
+  const [partnerHistory, setPartnerHistory] = useState<CompletedJob[]>([]);
 
   // Wallet State
   const [walletFilter, setWalletFilter] = useState<'all' | 'income' | 'expense'>('all');
@@ -470,6 +464,46 @@ const PartnerDashboard: React.FC = () => {
       const interval = setInterval(loadRequests, 10000); // 10 saniyede bir
       return () => clearInterval(interval);
    }, []);
+   
+   // Aktif işin iptal edilip edilmediğini kontrol et
+   useEffect(() => {
+      if (!activeJob || !(activeJob as any)._originalRequest) return;
+      
+      const checkActiveJobStatus = () => {
+        const originalRequest = (activeJob as any)._originalRequest as Request;
+        const currentRequest = getRequestById(originalRequest.id);
+        
+        if (!currentRequest) {
+          console.log('⚠️ [PartnerDashboard] Active job request not found');
+          return;
+        }
+        
+        if (currentRequest.status === 'cancelled') {
+          alert('⚠️ Müşteri bu işi iptal etti!');
+          setActiveJob(null);
+          setActiveTab('requests');
+          setJobStage(0);
+        }
+      };
+      
+      const interval = setInterval(checkActiveJobStatus, 5000); // 5 saniyede bir
+      return () => clearInterval(interval);
+   }, [activeJob]);
+   
+   // Partner geçmiş işlerini yükle
+   useEffect(() => {
+      const loadHistory = () => {
+        const jobs = getJobsByPartner(CURRENT_PARTNER_ID);
+        setPartnerHistory(jobs);
+        console.log('📋 [PartnerDashboard] Loaded partner history:', jobs.length);
+      };
+      
+      loadHistory(); // İlk yükleme
+      
+      // İş tamamlandığında yenilemek için 30 saniyede bir kontrol
+      const interval = setInterval(loadHistory, 30000);
+      return () => clearInterval(interval);
+   }, []);
 
   // Filter Logic
   const filteredRequests = requests.filter(req => {
@@ -481,9 +515,9 @@ const PartnerDashboard: React.FC = () => {
     return 0;
   });
 
-  const filteredHistory = MOCK_HISTORY.filter(item => 
+  const filteredHistory = partnerHistory.filter(item => 
     (item.id.toLowerCase().includes(historySearch.toLowerCase()) ||
-    item.customer.toLowerCase().includes(historySearch.toLowerCase())) &&
+    item.customerName.toLowerCase().includes(historySearch.toLowerCase())) &&
     item.status === 'completed'
   );
 
@@ -545,7 +579,7 @@ const PartnerDashboard: React.FC = () => {
       if (!selectedRequestForOffer || !offerPrice) return;
       console.log('🟢 [PartnerDashboard] Creating offer for request:', selectedRequestForOffer.id);
       // Persist offer to localStorage so B2C panel can see it
-      const createdOffer = createOffer('PARTNER-DEMO', selectedRequestForOffer.id, {
+      const createdOffer = createOffer(CURRENT_PARTNER_ID, selectedRequestForOffer.id, {
          price: parseFloat(offerPrice),
          etaMinutes: offerEta ? parseInt(offerEta) : 30,
          message: offerMessage
@@ -559,6 +593,25 @@ const PartnerDashboard: React.FC = () => {
    };
 
   const handleStartOperation = (job: JobRequest) => {
+    // B2C iş ise, önce iptal kontrolü yap ve localStorage'a işi başlat
+    if ((job as any)._originalRequest) {
+      const originalRequest = (job as any)._originalRequest as Request;
+      
+      // mockApi ile işi başlat (iptal kontrolü dahil)
+      const result = startJobByPartner(originalRequest.id, CURRENT_PARTNER_ID, CURRENT_PARTNER_NAME);
+      
+      if (!result.success) {
+        alert(`İş başlatılamadı: ${result.error}`);
+        // İptal edilmiş ise listeden kaldır
+        if (result.error?.includes('iptal')) {
+          setRequests(prev => prev.filter(r => r.id !== job.id));
+        }
+        return;
+      }
+      
+      console.log('🚀 [PartnerDashboard] Job started via mockApi:', originalRequest.id);
+    }
+    
     setActiveJob(job);
     setRequests(prev => prev.filter(r => r.id !== job.id));
     setJobStage(0);
@@ -590,7 +643,28 @@ const PartnerDashboard: React.FC = () => {
        return;
     }
     if (jobStage < 4) {
-      setJobStage((prev) => (prev + 1) as any);
+      const nextStage = (jobStage + 1) as 0 | 1 | 2 | 3 | 4;
+      
+      // B2C iş ise, localStorage'a aşamayı kaydet
+      if (activeJob && (activeJob as any)._originalRequest) {
+        const originalRequest = (activeJob as any)._originalRequest as Request;
+        const result = updateJobStage(originalRequest.id, CURRENT_PARTNER_ID, nextStage);
+        
+        if (!result.success) {
+          alert(`Aşama güncellenemedi: ${result.error}`);
+          // İptal edilmiş ise işi sonlandır
+          if (result.error?.includes('iptal')) {
+            setActiveJob(null);
+            setActiveTab('requests');
+            setJobStage(0);
+          }
+          return;
+        }
+        
+        console.log('📍 [PartnerDashboard] Job stage updated via mockApi:', originalRequest.id, 'stage:', nextStage);
+      }
+      
+      setJobStage(nextStage);
     }
   };
 
@@ -1822,7 +1896,7 @@ const PartnerDashboard: React.FC = () => {
                 <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
                   İş Detayı <span className="text-blue-600">#{item.id}</span>
                 </h2>
-                <p className="text-sm text-slate-500">{item.date}</p>
+                <p className="text-sm text-slate-500">{new Date(item.completionTime).toLocaleString('tr-TR')}</p>
               </div>
               <div className={`px-4 py-2 rounded-xl font-bold ${item.status === 'completed' ? 'bg-green-50 text-green-700' : item.status === 'cancelled' ? 'bg-red-50 text-red-700' : 'bg-gray-50 text-gray-700'}`}>
                 {item.status === 'completed' ? '✓ Tamamlandı' : item.status === 'cancelled' ? '✗ İptal' : '↩ İade'}
@@ -1833,8 +1907,9 @@ const PartnerDashboard: React.FC = () => {
               <div className="space-y-4">
                 <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 pb-2">Finansal Detaylar</h3>
                 <div className="space-y-3">
-                  <div className="flex justify-between text-sm"><span className="text-slate-600">Hizmet Bedeli</span><span className="font-bold text-slate-900">₺{item.price}</span></div>
-                  <div className="flex justify-between text-base pt-3 border-t border-slate-100"><span className="font-bold text-slate-800">Toplam Kazanç</span><span className="font-bold text-green-600 text-lg">₺{item.earnings}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-slate-600">Hizmet Bedeli</span><span className="font-bold text-slate-900">₺{item.totalAmount}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-slate-600">Komisyon (%15)</span><span className="font-bold text-red-500">-₺{item.commission}</span></div>
+                  <div className="flex justify-between text-base pt-3 border-t border-slate-100"><span className="font-bold text-slate-800">Toplam Kazanç</span><span className="font-bold text-green-600 text-lg">₺{item.partnerEarning}</span></div>
                 </div>
                 <div className="mt-4 p-3 bg-yellow-50 border border-yellow-100 rounded-xl text-xs text-yellow-800"><Info size={14} className="inline mr-1 mb-0.5" />Bu işlem için <strong>1 Kredi</strong> kullanılmıştır.</div>
               </div>
@@ -1842,14 +1917,14 @@ const PartnerDashboard: React.FC = () => {
                 <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 pb-2">Müşteri & Rota</h3>
                 <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
                   <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-blue-600 font-bold">{item.customer.charAt(0)}</div>
-                    <div><p className="font-bold text-slate-800">{item.customer}</p><p className="text-xs text-slate-500">Platin Üye</p></div>
+                    <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-blue-600 font-bold">{item.customerName.charAt(0)}</div>
+                    <div><p className="font-bold text-slate-800">{item.customerName}</p><p className="text-xs text-slate-500">Müşteri</p></div>
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-slate-500 bg-white/50 p-2 rounded-lg"><ShieldAlert size={16} className="text-orange-500" /><span>05** *** ** 12</span><span className="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded ml-auto">Gizli</span></div>
+                  <div className="flex items-center gap-2 text-sm text-slate-500 bg-white/50 p-2 rounded-lg"><ShieldAlert size={16} className="text-orange-500" /><span>{item.customerPhone || '05** *** ** 12'}</span><span className="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded ml-auto">Gizli</span></div>
                 </div>
                 <div>
-                  <div className="flex items-start gap-3 mb-3"><div className="mt-1 w-2 h-2 rounded-full bg-blue-500"></div><div><p className="text-xs text-slate-400 font-bold">BAŞLANGIÇ</p><p className="text-sm font-medium text-slate-800">{item.route.split('>')[0]}</p></div></div>
-                  <div className="flex items-start gap-3"><div className="mt-1 w-2 h-2 rounded-full bg-slate-800"></div><div><p className="text-xs text-slate-400 font-bold">VARIŞ</p><p className="text-sm font-medium text-slate-800">{item.route.split('>')[1] || 'Yerinde Hizmet'}</p></div></div>
+                  <div className="flex items-start gap-3 mb-3"><div className="mt-1 w-2 h-2 rounded-full bg-blue-500"></div><div><p className="text-xs text-slate-400 font-bold">BAŞLANGIÇ</p><p className="text-sm font-medium text-slate-800">{item.startLocation}</p></div></div>
+                  <div className="flex items-start gap-3"><div className="mt-1 w-2 h-2 rounded-full bg-slate-800"></div><div><p className="text-xs text-slate-400 font-bold">VARIŞ</p><p className="text-sm font-medium text-slate-800">{item.endLocation || 'Yerinde Hizmet'}</p></div></div>
                 </div>
               </div>
             </div>
@@ -1899,20 +1974,20 @@ const PartnerDashboard: React.FC = () => {
                       <tr key={item.id} className="hover:bg-slate-50/80 transition-colors cursor-pointer group" onClick={() => setSelectedHistoryItem(item)}>
                          <td className="p-4 pl-6">
                             <p className="font-bold text-slate-800 text-sm">#{item.id}</p>
-                            <p className="text-xs text-slate-400">{item.date}</p>
+                            <p className="text-xs text-slate-400">{new Date(item.completionTime).toLocaleString('tr-TR')}</p>
                          </td>
                          <td className="p-4">
-                            <p className="font-bold text-slate-800 text-sm">{item.service}</p>
-                            <p className="text-xs text-slate-500 flex items-center gap-1"><MapPin size={10} /> {item.route}</p>
+                            <p className="font-bold text-slate-800 text-sm">{item.serviceType}</p>
+                            <p className="text-xs text-slate-500 flex items-center gap-1"><MapPin size={10} /> {item.startLocation} {item.endLocation ? `→ ${item.endLocation}` : ''}</p>
                          </td>
                          <td className="p-4">
                             <div className="flex items-center gap-2">
-                               <div className="w-6 h-6 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-xs font-bold">{item.customer.charAt(0)}</div>
-                               <span className="text-sm text-slate-600">{item.customer}</span>
+                               <div className="w-6 h-6 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-xs font-bold">{item.customerName.charAt(0)}</div>
+                               <span className="text-sm text-slate-600">{item.customerName}</span>
                             </div>
                          </td>
                          <td className="p-4">
-                            <span className="font-bold text-slate-800">₺{item.price}</span>
+                            <span className="font-bold text-slate-800">₺{item.totalAmount}</span>
                          </td>
                          <td className="p-4">
                             <span className={`px-2 py-1 rounded-md text-xs font-bold ${item.status === 'completed' ? 'bg-green-50 text-green-700' : item.status === 'cancelled' ? 'bg-red-50 text-red-700' : 'bg-slate-100 text-slate-600'}`}>
@@ -2345,12 +2420,12 @@ const PartnerDashboard: React.FC = () => {
              </div>
 
              <div className="space-y-3">
-               {MOCK_HISTORY.slice(0, 5).map((job, idx) => (
+               {partnerHistory.slice(0, 5).map((job, idx) => (
                  <div key={idx} className="bg-gray-50 rounded-xl p-5 border border-gray-200 hover:border-blue-300 transition-all">
                    <div className="flex items-start justify-between mb-3">
                      <div>
                        <h3 className="font-bold text-gray-900">#{job.id}</h3>
-                       <p className="text-sm text-gray-500">{job.date}</p>
+                       <p className="text-sm text-gray-500">{new Date(job.completionTime).toLocaleString('tr-TR')}</p>
                      </div>
                      <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full">
                        Tamamlandı
@@ -2359,19 +2434,19 @@ const PartnerDashboard: React.FC = () => {
                    <div className="grid grid-cols-2 gap-4 text-sm">
                      <div>
                        <p className="text-gray-500">Hizmet</p>
-                       <p className="font-bold text-gray-900">{job.service}</p>
+                       <p className="font-bold text-gray-900">{job.serviceType}</p>
                      </div>
                      <div>
                        <p className="text-gray-500">Müşteri</p>
-                       <p className="font-bold text-gray-900">{job.customer}</p>
+                       <p className="font-bold text-gray-900">{job.customerName}</p>
                      </div>
                      <div>
                        <p className="text-gray-500">Rota</p>
-                       <p className="font-bold text-gray-900">{job.route}</p>
+                       <p className="font-bold text-gray-900">{job.startLocation} {job.endLocation ? `→ ${job.endLocation}` : ''}</p>
                      </div>
                      <div>
                        <p className="text-gray-500">Kazanç</p>
-                       <p className="font-bold text-green-600">₺{job.earnings}</p>
+                       <p className="font-bold text-green-600">₺{job.partnerEarning}</p>
                      </div>
                    </div>
                  </div>
@@ -2380,7 +2455,7 @@ const PartnerDashboard: React.FC = () => {
 
              <div className="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-200">
                <p className="text-sm text-blue-700">
-                 <strong>Toplam {MOCK_HISTORY.length} iş</strong> bu araçla tamamlandı. Detaylı rapor için "Geçmiş İşler" sekmesini kullanabilirsiniz.
+                 <strong>Toplam {partnerHistory.length} iş</strong> bu araçla tamamlandı. Detaylı rapor için "Geçmiş İşler" sekmesini kullanabilirsiniz.
                </p>
              </div>
            </div>
@@ -3759,7 +3834,7 @@ const PartnerDashboard: React.FC = () => {
         >
           <div className="flex items-center justify-between mb-2">
             <CheckCircle size={24} className="opacity-80" />
-            <span className="text-3xl font-black">{MOCK_HISTORY.filter(h => h.status === 'completed').length}</span>
+            <span className="text-3xl font-black">{partnerHistory.filter(h => h.status === 'completed').length}</span>
           </div>
           <p className="text-sm font-bold opacity-80">Tamamlanan İş</p>
         </button>

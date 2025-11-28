@@ -180,20 +180,155 @@ export function cancelRequest(requestId: string): boolean {
 
 /**
  * Partner tarafından iş tamamlandığında çağrılır
+ * CompletedJob kaydı da oluşturur
  */
 export function completeRequestByPartner(requestId: string, offerId: string): boolean {
   const requests = load<Request>(LS_KEYS.requests);
   const idx = requests.findIndex(r => r.id === requestId);
   if (idx < 0) return false;
   
-  // Sadece 'matched' durumdaki talepler tamamlanabilir
-  if (requests[idx].status !== 'matched') return false;
+  const request = requests[idx];
   
+  // 'matched' veya 'in_progress' durumdaki talepler tamamlanabilir
+  if (request.status !== 'matched' && request.status !== 'in_progress') return false;
+  
+  // Kabul edilmiş teklifi bul
+  const offers = load<Offer>(LS_KEYS.offers);
+  const acceptedOffer = offers.find(o => o.id === offerId || (o.requestId === requestId && o.status === 'accepted'));
+  
+  // CompletedJob kaydı oluştur
+  if (acceptedOffer && request.assignedPartnerId) {
+    const startTime = request.stageUpdatedAt || request.createdAt;
+    const completionTime = new Date().toISOString();
+    const durationMs = new Date(completionTime).getTime() - new Date(startTime).getTime();
+    const durationMinutes = Math.round(durationMs / 60000);
+    
+    const completedJob: CompletedJob = {
+      id: genId('JOB'),
+      partnerId: request.assignedPartnerId,
+      partnerName: request.assignedPartnerName || 'Partner',
+      customerId: request.customerId,
+      customerName: request.customerName || 'Müşteri',
+      customerPhone: request.customerPhone || '',
+      serviceType: request.serviceType,
+      startLocation: request.fromLocation,
+      endLocation: request.toLocation,
+      distance: 0, // Hesaplanamıyor
+      startTime: startTime,
+      completionTime: completionTime,
+      duration: durationMinutes,
+      totalAmount: acceptedOffer.price,
+      commission: Math.round(acceptedOffer.price * 0.15), // %15 komisyon
+      partnerEarning: Math.round(acceptedOffer.price * 0.85),
+      paymentMethod: 'nakit',
+      vehicleType: 'Çekici',
+      vehiclePlate: '34 XX 0000',
+      status: 'completed'
+    };
+    
+    const jobs = load<CompletedJob>(LS_KEYS.jobs);
+    jobs.push(completedJob);
+    save(LS_KEYS.jobs, jobs);
+    console.log('📋 [mockApi] CompletedJob created:', completedJob.id);
+  }
+  
+  // Request'i güncelle
   requests[idx].status = 'completed';
+  requests[idx].jobStage = 4;
+  requests[idx].stageUpdatedAt = new Date().toISOString();
+  requests[idx].amount = acceptedOffer?.price;
   save(LS_KEYS.requests, requests);
   
   console.log('✅ [mockApi] Request completed:', requestId);
   return true;
+}
+
+/**
+ * Tekil request getir (ID ile)
+ */
+export function getRequestById(requestId: string): Request | null {
+  const requests = load<Request>(LS_KEYS.requests);
+  return requests.find(r => r.id === requestId) || null;
+}
+
+/**
+ * Partner işe başladığında çağrılır - Request'i in_progress yapar
+ */
+export function startJobByPartner(requestId: string, partnerId: string, partnerName: string): { success: boolean; error?: string } {
+  const requests = load<Request>(LS_KEYS.requests);
+  const idx = requests.findIndex(r => r.id === requestId);
+  
+  if (idx < 0) {
+    return { success: false, error: 'Talep bulunamadı' };
+  }
+  
+  const request = requests[idx];
+  
+  // Müşteri iptal etmiş mi kontrol et
+  if (request.status === 'cancelled') {
+    return { success: false, error: 'Müşteri bu talebi iptal etmiş' };
+  }
+  
+  // Sadece 'matched' durumundaki talepler başlatılabilir
+  if (request.status !== 'matched') {
+    return { success: false, error: `Bu talep başlatılamaz (durum: ${request.status})` };
+  }
+  
+  // Request'i güncelle
+  requests[idx] = {
+    ...request,
+    status: 'in_progress',
+    jobStage: 0, // Yola çıkıldı
+    assignedPartnerId: partnerId,
+    assignedPartnerName: partnerName,
+    stageUpdatedAt: new Date().toISOString()
+  };
+  
+  save(LS_KEYS.requests, requests);
+  console.log('🚀 [mockApi] Job started by partner:', partnerId, 'for request:', requestId);
+  return { success: true };
+}
+
+/**
+ * İş aşamasını güncelle (0-4)
+ * 0: Yola çıkıldı, 1: Varış, 2: Yükleme, 3: Teslimat, 4: Tamamlandı
+ */
+export function updateJobStage(requestId: string, partnerId: string, newStage: 0 | 1 | 2 | 3 | 4): { success: boolean; error?: string } {
+  const requests = load<Request>(LS_KEYS.requests);
+  const idx = requests.findIndex(r => r.id === requestId);
+  
+  if (idx < 0) {
+    return { success: false, error: 'Talep bulunamadı' };
+  }
+  
+  const request = requests[idx];
+  
+  // Müşteri iptal etmiş mi kontrol et
+  if (request.status === 'cancelled') {
+    return { success: false, error: 'Müşteri bu talebi iptal etmiş' };
+  }
+  
+  // Sadece in_progress durumundaki talepler güncellenebilir
+  if (request.status !== 'in_progress') {
+    return { success: false, error: `Bu talep güncellenemez (durum: ${request.status})` };
+  }
+  
+  // Partner kontrolü
+  if (request.assignedPartnerId !== partnerId) {
+    return { success: false, error: 'Bu işi sadece atanan partner güncelleyebilir' };
+  }
+  
+  // Aşama 4 ise işi tamamla
+  if (newStage === 4) {
+    requests[idx].status = 'completed';
+  }
+  
+  requests[idx].jobStage = newStage;
+  requests[idx].stageUpdatedAt = new Date().toISOString();
+  
+  save(LS_KEYS.requests, requests);
+  console.log('📍 [mockApi] Job stage updated:', requestId, 'stage:', newStage);
+  return { success: true };
 }
 
 // OFFERS
