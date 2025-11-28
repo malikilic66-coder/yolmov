@@ -247,7 +247,19 @@ export const customersApi = {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data || [];
+      
+      // snake_case → camelCase
+      return (data || []).map(d => ({
+        id: d.id,
+        firstName: d.first_name,
+        lastName: d.last_name,
+        phone: d.phone,
+        email: d.email,
+        avatarUrl: d.avatar_url,
+        city: d.city,
+        district: d.district,
+        createdAt: d.created_at,
+      }));
     } catch (error) {
       handleError(error, 'Get All Customers');
       return [];
@@ -263,7 +275,21 @@ export const customersApi = {
         .single();
 
       if (error) throw error;
-      return data;
+      
+      if (!data) return null;
+      
+      // snake_case → camelCase
+      return {
+        id: data.id,
+        firstName: data.first_name,
+        lastName: data.last_name,
+        phone: data.phone,
+        email: data.email,
+        avatarUrl: data.avatar_url,
+        city: data.city,
+        district: data.district,
+        createdAt: data.created_at,
+      };
     } catch (error) {
       handleError(error, `Get Customer ${id}`);
       return null;
@@ -272,14 +298,37 @@ export const customersApi = {
 
   create: async (customer: Omit<Customer, 'id' | 'createdAt'>): Promise<Customer> => {
     try {
+      // camelCase → snake_case dönüşümü
+      const dbCustomer = {
+        first_name: customer.firstName,
+        last_name: customer.lastName,
+        phone: customer.phone || '',
+        email: customer.email || null,
+        avatar_url: customer.avatarUrl || null,
+        city: customer.city || null,
+        district: customer.district || null,
+      };
+
       const { data, error } = await supabase
         .from('customers')
-        .insert(customer)
+        .insert(dbCustomer)
         .select()
         .single();
 
       if (error) throw error;
-      return data;
+      
+      // snake_case → camelCase dönüşümü
+      return {
+        id: data.id,
+        firstName: data.first_name,
+        lastName: data.last_name,
+        phone: data.phone,
+        email: data.email,
+        avatarUrl: data.avatar_url,
+        city: data.city,
+        district: data.district,
+        createdAt: data.created_at,
+      };
     } catch (error) {
       handleError(error, 'Create Customer');
       throw error;
@@ -288,15 +337,37 @@ export const customersApi = {
 
   update: async (id: string, updates: Partial<Customer>): Promise<Customer> => {
     try {
+      // camelCase → snake_case
+      const dbUpdates: any = {};
+      if (updates.firstName !== undefined) dbUpdates.first_name = updates.firstName;
+      if (updates.lastName !== undefined) dbUpdates.last_name = updates.lastName;
+      if (updates.phone !== undefined) dbUpdates.phone = updates.phone;
+      if (updates.email !== undefined) dbUpdates.email = updates.email;
+      if (updates.avatarUrl !== undefined) dbUpdates.avatar_url = updates.avatarUrl;
+      if (updates.city !== undefined) dbUpdates.city = updates.city;
+      if (updates.district !== undefined) dbUpdates.district = updates.district;
+
       const { data, error } = await supabase
         .from('customers')
-        .update(updates)
+        .update(dbUpdates)
         .eq('id', id)
         .select()
         .single();
 
       if (error) throw error;
-      return data;
+      
+      // snake_case → camelCase
+      return {
+        id: data.id,
+        firstName: data.first_name,
+        lastName: data.last_name,
+        phone: data.phone,
+        email: data.email,
+        avatarUrl: data.avatar_url,
+        city: data.city,
+        district: data.district,
+        createdAt: data.created_at,
+      };
     } catch (error) {
       handleError(error, `Update Customer ${id}`);
       throw error;
