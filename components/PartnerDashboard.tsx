@@ -15,42 +15,12 @@ import {
 } from 'lucide-react';
 import { JobRequest, Request, CompletedJob } from '../types';
 import { MOCK_PARTNER_REQUESTS, CITIES_WITH_DISTRICTS } from '../constants';
-import { 
-  createOffer, 
-  getRequestsByCustomer, 
-  submitObjection, 
-  uploadDocument, 
-  createSupportTicket,
-  getReviewsByPartner,
-  getDocumentsByPartner,
-  getTicketsByPartner,
-  getVehiclesByPartner,
-  addVehicle,
-  updateVehicle,
-  deleteVehicle,
-  getPartnerCredits,
-  purchaseCredits,
-  getCreditTransactions,
-  getRoutesByPartner,
-  createRoute,
-  deleteRoute,
-  getJobsByPartner,
-  initializeMockData,
-  getOpenRequestsForPartner,
-  completeRequestByPartner,
-  getOffersForRequest,
-  startJobByPartner,
-  updateJobStage,
-  getRequestById
-} from '../services/mockApi';
+import { supabaseApi } from '../services/supabaseApi';
 import { motion, AnimatePresence } from 'framer-motion';
 import PartnerOfferHistory from './PartnerOfferHistory';
 import PartnerPayments from './PartnerPayments';
 import PartnerDocuments from './PartnerDocuments';
 import { compressImage, isImageFile, createPreviewUrl } from '../utils/imageCompression';
-
-// Initialize mock data on component load
-initializeMockData();
 
 // MOCK TRANSACTIONS FOR WALLET
 const MOCK_TRANSACTIONS = [
@@ -331,51 +301,57 @@ const PartnerDashboard: React.FC = () => {
         console.log(`📄 Belge sıkıştırıldı: ${result.compressionRatio.toFixed(1)}% küçültüldü`);
       }
       
-      // Base64'e dönüştür
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64Data = reader.result as string;
-        
-        // Belge türü mapping
-        const docTypeMap: Record<string, 'license' | 'insurance' | 'registration' | 'tax' | 'identity'> = {
-          'K1/K2 Belgesi': 'license',
-          'K1 Belgesi': 'license',
-          'K2 Belgesi': 'license',
-          'Kasko Poliçesi': 'insurance',
-          'Trafik Sigortası': 'insurance',
-          'Araç Ruhsatı': 'registration',
-          'Vergi Levhası': 'tax',
-          'Kimlik Fotokopisi': 'identity',
-          'Ehliyet Fotokopisi': 'identity'
-        };
-        
-        // Mock API ile kaydet
-        uploadDocument({
-          partnerId: CURRENT_PARTNER_ID,
-          partnerName: CURRENT_PARTNER_NAME,
-          type: docTypeMap[selectedDocType] || 'registration',
-          fileName: finalFile.name,
-          fileSize: `${(finalFile.size / 1024 / 1024).toFixed(2)} MB`,
-          fileData: base64Data
-        });
-        
-        alert(`✅ ${selectedDocType} başarıyla yüklendi!\n\nDosya: ${finalFile.name}\nBoyut: ${(finalFile.size / 1024 / 1024).toFixed(2)} MB\n\nBelgeniz admin onayına gönderildi.`);
-        setUploadingDocument(false);
-        setShowDocumentUploadModal(false);
-        setSelectedDocType('');
-        if (documentInputRef.current) {
-          documentInputRef.current.value = '';
-        }
+      const partnerId = localStorage.getItem('yolmov_partner_id') || '';
+      
+      // Belge türü mapping
+      const docTypeMap: Record<string, 'license' | 'insurance' | 'registration' | 'tax' | 'identity'> = {
+        'K1/K2 Belgesi': 'license',
+        'K1 Belgesi': 'license',
+        'K2 Belgesi': 'license',
+        'Kasko Poliçesi': 'insurance',
+        'Trafik Sigortası': 'insurance',
+        'Araç Ruhsatı': 'registration',
+        'Vergi Levhası': 'tax',
+        'Kimlik Fotokopisi': 'identity',
+        'Ehliyet Fotokopisi': 'identity'
       };
       
-      reader.onerror = () => {
-        setDocumentUploadError('Dosya okuma hatası oluştu.');
-        setUploadingDocument(false);
-      };
+      const documentType = docTypeMap[selectedDocType] || 'registration';
       
-      reader.readAsDataURL(finalFile);
+      // Supabase Storage'a yükle
+      const uploadResult = await supabaseApi.storage.uploadPartnerDocument(
+        finalFile,
+        partnerId,
+        null, // request_id yok, partner belgesi
+        documentType
+      );
+
+      if (!uploadResult.success || !uploadResult.url) {
+        throw new Error('Belge yüklenemedi');
+      }
+
+      // Belgeyi veritabanına kaydet
+      await supabaseApi.documents.create({
+        partner_id: partnerId,
+        type: documentType,
+        file_name: finalFile.name,
+        file_url: uploadResult.url,
+        file_size: finalFile.size,
+        status: 'pending',
+        uploaded_at: new Date().toISOString()
+      });
+      
+      console.log('📄 [PartnerDashboard] Document uploaded:', uploadResult.url);
+      
+      alert(`✅ ${selectedDocType} başarıyla yüklendi!\n\nDosya: ${finalFile.name}\nBoyut: ${(finalFile.size / 1024 / 1024).toFixed(2)} MB\n\nBelgeniz admin onayına gönderildi.`);
+      setUploadingDocument(false);
+      setShowDocumentUploadModal(false);
+      setSelectedDocType('');
+      if (documentInputRef.current) {
+        documentInputRef.current.value = '';
+      }
     } catch (error) {
-      console.error('Belge yükleme hatası:', error);
+      console.error('❌ Belge yükleme hatası:', error);
       setDocumentUploadError('Belge yüklenirken hata oluştu. Lütfen tekrar deneyin.');
       setUploadingDocument(false);
       if (documentInputRef.current) {
@@ -450,22 +426,31 @@ const PartnerDashboard: React.FC = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-   // Load all open customer requests for partner to see (from mockApi)
-   // Her 10 saniyede bir güncelle - müşteri iptal ettiğinde listeden düşsün
-   useEffect(() => {
-      const loadRequests = () => {
-        const reqs = getOpenRequestsForPartner();
+  // Load all open customer requests for partner to see (from Supabase)
+  // Real-time subscription ile anlık güncelleme
+  useEffect(() => {
+    const loadRequests = async () => {
+      try {
+        const reqs = await supabaseApi.requests.getOpen();
         setCustomerRequests(reqs);
-        console.log('🔄 [PartnerDashboard] Refreshed open requests:', reqs.length);
-      };
-      
-      loadRequests(); // İlk yükleme
-      
-      const interval = setInterval(loadRequests, 10000); // 10 saniyede bir
-      return () => clearInterval(interval);
-   }, []);
-   
-   // Aktif işin iptal edilip edilmediğini kontrol et
+        console.log('🔄 [PartnerDashboard] Loaded open requests:', reqs.length);
+      } catch (error) {
+        console.error('Error loading requests:', error);
+      }
+    };
+    
+    loadRequests();
+    
+    // Real-time subscription for new requests
+    const unsubscribe = supabaseApi.requests.subscribeToNew((newRequest) => {
+      console.log('✨ [PartnerDashboard] New request:', newRequest);
+      setCustomerRequests(prev => [newRequest, ...prev]);
+    });
+    
+    return () => {
+      unsubscribe();
+    };
+  }, []);   // Aktif işin iptal edilip edilmediğini kontrol et
    useEffect(() => {
       if (!activeJob || !(activeJob as any)._originalRequest) return;
       
@@ -575,55 +560,72 @@ const PartnerDashboard: React.FC = () => {
     }, 2500);
   };
 
-   const handleSubmitCustomerOffer = () => {
-      if (!selectedRequestForOffer || !offerPrice) return;
+  const handleSubmitCustomerOffer = async () => {
+    if (!selectedRequestForOffer || !offerPrice) return;
+    
+    try {
       console.log('🟢 [PartnerDashboard] Creating offer for request:', selectedRequestForOffer.id);
-      // Persist offer to localStorage so B2C panel can see it
-      const createdOffer = createOffer(CURRENT_PARTNER_ID, selectedRequestForOffer.id, {
-         price: parseFloat(offerPrice),
-         etaMinutes: offerEta ? parseInt(offerEta) : 30,
-         message: offerMessage
+      
+      // Get partner info from localStorage
+      const partner = JSON.parse(localStorage.getItem('yolmov_partner') || '{}');
+      
+      // Create offer in Supabase
+      const createdOffer = await supabaseApi.offers.create({
+        request_id: selectedRequestForOffer.id,
+        partner_id: partner.id,
+        partner_name: partner.name || CURRENT_PARTNER_NAME,
+        price: parseFloat(offerPrice),
+        eta_minutes: offerEta ? parseInt(offerEta) : 30,
+        message: offerMessage || null
       });
-      console.log('🟢 [PartnerDashboard] Created offer:', createdOffer);
+      
+      console.log('✅ [PartnerDashboard] Offer created:', createdOffer);
       alert('Teklif gönderildi. Müşteri yanıtını bekleyebilirsiniz.');
+      
       setSelectedRequestForOffer(null);
       setOfferPrice('');
       setOfferEta('');
       setOfferMessage('');
-   };
-
-  const handleStartOperation = (job: JobRequest) => {
-    // B2C iş ise, önce iptal kontrolü yap ve localStorage'a işi başlat
-    if ((job as any)._originalRequest) {
-      const originalRequest = (job as any)._originalRequest as Request;
       
-      // mockApi ile işi başlat (iptal kontrolü dahil)
-      const result = startJobByPartner(originalRequest.id, CURRENT_PARTNER_ID, CURRENT_PARTNER_NAME);
-      
-      if (!result.success) {
-        alert(`İş başlatılamadı: ${result.error}`);
-        // İptal edilmiş ise listeden kaldır
-        if (result.error?.includes('iptal')) {
-          setRequests(prev => prev.filter(r => r.id !== job.id));
-        }
-        return;
+      // Deduct credit (TODO: implement credit system)
+      setCredits(prev => prev - 1);
+    } catch (error) {
+      console.error('❌ [PartnerDashboard] Offer creation failed:', error);
+      alert('Teklif gönderilemedi. Lütfen tekrar deneyin.');
+    }
+  };  const handleStartOperation = async (job: JobRequest) => {
+    try {
+      // B2C iş ise Supabase'de işi başlat
+      if ((job as any)._originalRequest) {
+        const originalRequest = (job as any)._originalRequest as Request;
+        const partner = JSON.parse(localStorage.getItem('yolmov_partner') || '{}');
+        
+        // Update request status to in_progress
+        await supabaseApi.requests.update(originalRequest.id, {
+          status: 'in_progress',
+          job_stage: 0,
+          assigned_partner_id: partner.id,
+          assigned_partner_name: partner.name || CURRENT_PARTNER_NAME
+        });
+        
+        console.log('🚀 [PartnerDashboard] Job started:', originalRequest.id);
       }
       
-      console.log('🚀 [PartnerDashboard] Job started via mockApi:', originalRequest.id);
+      setActiveJob(job);
+      setRequests(prev => prev.filter(r => r.id !== job.id));
+      setJobStage(0);
+      setHasStartProof(false);
+      setHasEndProof(false);
+      setActiveTab('active');
+      setTestLocation({ lat: 41.0082, lng: 28.9784, name: 'Taksim Meydanı, İstanbul' });
+      setNavigationStarted(false);
+    } catch (error) {
+      console.error('❌ Job start failed:', error);
+      alert('İş başlatılamadı. Lütfen tekrar deneyin.');
     }
-    
-    setActiveJob(job);
-    setRequests(prev => prev.filter(r => r.id !== job.id));
-    setJobStage(0);
-    setHasStartProof(false);
-    setHasEndProof(false);
-    setActiveTab('active');
-    // Test konumu ayarla
-    setTestLocation({ lat: 41.0082, lng: 28.9784, name: 'Taksim Meydanı, İstanbul' });
-    setNavigationStarted(false);
   };
 
-  const advanceJobStage = () => {
+  const advanceJobStage = async () => {
     // Stage 0: Navigasyon başlatma kontrolü
     if (jobStage === 0 && !navigationStarted) {
       handleStartNavigation();
@@ -645,39 +647,55 @@ const PartnerDashboard: React.FC = () => {
     if (jobStage < 4) {
       const nextStage = (jobStage + 1) as 0 | 1 | 2 | 3 | 4;
       
-      // B2C iş ise, localStorage'a aşamayı kaydet
-      if (activeJob && (activeJob as any)._originalRequest) {
-        const originalRequest = (activeJob as any)._originalRequest as Request;
-        const result = updateJobStage(originalRequest.id, CURRENT_PARTNER_ID, nextStage);
-        
-        if (!result.success) {
-          alert(`Aşama güncellenemedi: ${result.error}`);
-          // İptal edilmiş ise işi sonlandır
-          if (result.error?.includes('iptal')) {
-            setActiveJob(null);
-            setActiveTab('requests');
-            setJobStage(0);
-          }
-          return;
+      try {
+        // B2C iş ise, Supabase'de aşamayı güncelle
+        if (activeJob && (activeJob as any)._originalRequest) {
+          const originalRequest = (activeJob as any)._originalRequest as Request;
+          
+          await supabaseApi.requests.update(originalRequest.id, {
+            job_stage: nextStage
+          });
+          
+          console.log('📍 [PartnerDashboard] Job stage updated:', originalRequest.id, 'stage:', nextStage);
         }
         
-        console.log('📍 [PartnerDashboard] Job stage updated via mockApi:', originalRequest.id, 'stage:', nextStage);
+        setJobStage(nextStage);
+      } catch (error) {
+        console.error('❌ Stage update failed:', error);
+        alert('Aşama güncellenemedi. Lütfen tekrar deneyin.');
       }
-      
-      setJobStage(nextStage);
     }
   };
 
-  const handleFinishJob = () => {
+  const handleFinishJob = async () => {
     // B2C iş ise, request'i 'completed' olarak işaretle
     if (activeJob && (activeJob as any)._originalRequest) {
       const originalRequest = (activeJob as any)._originalRequest as Request;
-      // Bu request için kabul edilmiş offer'ı bul
-      const offers = getOffersForRequest(originalRequest.id);
-      const acceptedOffer = offers.find(o => o.status === 'accepted');
-      if (acceptedOffer) {
-        completeRequestByPartner(originalRequest.id, acceptedOffer.id);
+      
+      try {
+        // Request'i 'completed' durumuna güncelle
+        await supabaseApi.requests.update(originalRequest.id, {
+          status: 'completed',
+          job_stage: 4,
+          actual_completion_date: new Date().toISOString()
+        });
+
+        // Kabul edilmiş offer'ı bul ve 'completed' olarak işaretle
+        const offersResult = await supabaseApi.offers.getByRequest(originalRequest.id);
+        if (offersResult.success && offersResult.data) {
+          const acceptedOffer = offersResult.data.find(o => o.status === 'accepted');
+          if (acceptedOffer) {
+            await supabaseApi.offers.update(acceptedOffer.id, {
+              status: 'completed'
+            });
+          }
+        }
+
         console.log('✅ [PartnerDashboard] B2C request completed:', originalRequest.id);
+      } catch (error) {
+        console.error('❌ Job completion failed:', error);
+        alert('İş tamamlanırken hata oluştu. Lütfen tekrar deneyin.');
+        return;
       }
     }
     
@@ -750,6 +768,35 @@ const PartnerDashboard: React.FC = () => {
 
     try {
       const result = await compressImage(file);
+      
+      // Fotoğrafı Supabase Storage'a yükle
+      if (activeJob && (activeJob as any)._originalRequest) {
+        const originalRequest = (activeJob as any)._originalRequest as Request;
+        const partnerId = localStorage.getItem('yolmov_partner_id') || '';
+        
+        const uploadResult = await supabaseApi.storage.uploadPartnerDocument(
+          result.compressedFile,
+          partnerId,
+          originalRequest.id,
+          type === 'start' ? 'job_start_proof' : 'job_end_proof'
+        );
+
+        if (!uploadResult.success || !uploadResult.url) {
+          throw new Error('Fotoğraf yüklenemedi');
+        }
+
+        // İş kanıtını requests tablosuna kaydet
+        const updateData: any = {};
+        if (type === 'start') {
+          updateData.start_proof_photo = uploadResult.url;
+        } else {
+          updateData.end_proof_photo = uploadResult.url;
+        }
+
+        await supabaseApi.requests.update(originalRequest.id, updateData);
+        
+        console.log(`📸 [PartnerDashboard] ${type} proof uploaded:`, uploadResult.url);
+      }
       
       if (type === 'start') {
         setStartProofImage(result.compressedFile);

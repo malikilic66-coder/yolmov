@@ -6,7 +6,20 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { FileText, Upload, CheckCircle, XCircle, Clock, Eye, Download, Trash2, AlertTriangle, Loader2 } from 'lucide-react';
 import { compressImage, isImageFile } from '../utils/imageCompression';
-import { uploadDocument, getDocumentsByPartner, PartnerDocument } from '../services/mockApi';
+import supabaseApi from '../services/supabaseApi';
+
+interface PartnerDocument {
+  id: string;
+  partnerId: string;
+  partnerName: string;
+  type: 'license' | 'insurance' | 'registration' | 'tax' | 'identity';
+  name: string;
+  fileSize: string;
+  uploadDate: string;
+  expiryDate?: string;
+  status: 'pending' | 'approved' | 'rejected';
+  rejectionReason?: string;
+}
 
 const DOCUMENT_TYPES = [
   { value: 'license', label: 'Sürücü Belgesi', required: true },
@@ -24,17 +37,33 @@ export const PartnerDocuments: React.FC = () => {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [viewingDocument, setViewingDocument] = useState<PartnerDocument | null>(null);
   
-  // Mock current partner ID
-  const currentPartnerId = 'PTR-001';
-  const currentPartnerName = 'Yılmaz Oto Kurtarma';
+  // Partner ID'yi localStorage'dan al
+  const currentPartnerId = localStorage.getItem('yolmov_partner_id') || '';
+  const currentPartnerName = localStorage.getItem('yolmov_partner_name') || 'Partner';
 
   useEffect(() => {
     loadDocuments();
   }, []);
 
-  const loadDocuments = () => {
-    const docs = getDocumentsByPartner(currentPartnerId);
-    setDocuments(docs);
+  const loadDocuments = async () => {
+    try {
+      const docs = await supabaseApi.partnerDocuments.getByPartnerId(currentPartnerId);
+      const mapped = docs.map((d: any) => ({
+        id: d.id,
+        partnerId: d.partner_id,
+        partnerName: currentPartnerName,
+        type: d.type,
+        name: d.file_name,
+        fileSize: typeof d.file_size === 'number' ? `${(d.file_size / 1024 / 1024).toFixed(2)} MB` : d.file_size,
+        uploadDate: new Date(d.uploaded_at).toLocaleDateString('tr-TR'),
+        expiryDate: d.expiry_date ? new Date(d.expiry_date).toLocaleDateString('tr-TR') : undefined,
+        status: d.status,
+        rejectionReason: d.rejection_reason
+      }));
+      setDocuments(mapped);
+    } catch (error) {
+      console.error('❌ Belgeler yüklenemedi:', error);
+    }
   };
 
 
@@ -64,8 +93,6 @@ export const PartnerDocuments: React.FC = () => {
     
     const file = e.target.files[0];
 
-    // Aynı dosya tekrar seçildiğinde onChange tetiklenmesi için önce temizle
-    // (Bazı kullanıcılar aynı dosyayı tekrar yüklemek istediğinde "çalışmıyor" algısı oluşuyordu)
     setUploading(true);
     
     try {
@@ -78,40 +105,51 @@ export const PartnerDocuments: React.FC = () => {
         console.log(`📄 Belge sıkıştırıldı: ${result.compressionRatio.toFixed(1)}% küçültüldü`);
       }
       
-      // Simüle upload
-      setTimeout(() => {
-        const newDoc = uploadDocument({
-          partnerId: currentPartnerId,
-          partnerName: currentPartnerName,
-          type: selectedType as any,
-          fileName: finalFile.name,
-          fileSize: `${(finalFile.size / 1024 / 1024).toFixed(1)} MB`,
-        });
-        
-        setDocuments(prev => [...prev, newDoc]);
-        setUploading(false);
-        setSelectedType('');
-        // Aynı dosyanın tekrar seçilip yüklenebilmesi için input değerini sıfırla
-        if (fileInputRef.current) {
-          fileInputRef.current.value = '';
-        }
-        setErrorMsg(null);
-      }, 1500);
-    } catch (error) {
-      console.error('Belge yükleme hatası:', error);
-      alert('Belge yüklenirken hata oluştu. Lütfen tekrar deneyin.');
+      // TODO: Storage API eklenecek - şimdilik mock URL
+      const uploadUrl = `https://placeholder-url/${finalFile.name}`;
+
+      // Veritabanına kaydet
+      const created = await supabaseApi.partnerDocuments.create({
+        partnerId: currentPartnerId,
+        partnerName: currentPartnerName,
+        type: selectedType as any,
+        fileName: finalFile.name,
+        fileSize: `${(finalFile.size / 1024 / 1024).toFixed(2)} MB`,
+        status: 'pending'
+      });
+
+      const newDoc: PartnerDocument = {
+        id: created.id,
+        partnerId: currentPartnerId,
+        partnerName: currentPartnerName,
+        type: selectedType as any,
+        name: finalFile.name,
+        fileSize: `${(finalFile.size / 1024 / 1024).toFixed(2)} MB`,
+        uploadDate: new Date().toLocaleDateString('tr-TR'),
+        status: 'pending'
+      };
+
+      setDocuments(prev => [...prev, newDoc]);
+      console.log('📄 [PartnerDocuments] Document uploaded:', uploadUrl);
+      
       setUploading(false);
+      setSelectedType('');
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
+      setErrorMsg(null);
+    } catch (error) {
+      console.error('❌ Belge yükleme hatası:', error);
+      setErrorMsg('Belge yüklenirken hata oluştu. Lütfen tekrar deneyin.');
+      setUploading(false);
     }
   };
 
   const stats = {
     total: DOCUMENT_TYPES.length,
-    approved: documents.filter(d => d.status === 'approved').length,
-    pending: documents.filter(d => d.status === 'pending').length,
-    rejected: documents.filter(d => d.status === 'rejected').length,
+    approved: documents.filter((d: PartnerDocument) => d.status === 'approved').length,
+    pending: documents.filter((d: PartnerDocument) => d.status === 'pending').length,
+    rejected: documents.filter((d: PartnerDocument) => d.status === 'rejected').length,
   };
 
   return (

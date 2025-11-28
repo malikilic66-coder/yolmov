@@ -3,9 +3,10 @@
  * Partnerin gönderdiği tekliflerin geçmişi ve durumları
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CheckCircle, XCircle, Clock, Search, Filter, Calendar, DollarSign, Eye, ChevronRight, User, MapPin, FileText, X } from 'lucide-react';
 import { motion } from 'framer-motion';
+import supabaseApi from '../services/supabaseApi';
 
 interface Offer {
   id: string;
@@ -20,8 +21,46 @@ interface Offer {
   responseMessage?: string;
 }
 
-// MOCK DATA
-const MOCK_OFFERS: Offer[] = [
+const PartnerOfferHistory: React.FC = () => {
+  const [offers, setOffers] = useState<Offer[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Supabase'den teklifleri yükle
+  useEffect(() => {
+    loadOffers();
+  }, []);
+
+  const loadOffers = async () => {
+    try {
+      setLoading(true);
+      const partnerId = localStorage.getItem('yolmov_partner_id') || '';
+      
+      const offersData = await supabaseApi.offers.getByPartnerId(partnerId);
+      if (offersData && offersData.length > 0) {
+        // Supabase verilerini Offer formatına dönüştür
+        const formattedOffers: Offer[] = offersData.map((offer: any) => ({
+          id: offer.id,
+          requestId: offer.request_id,
+          customer: 'Müşteri', // Request'ten çekilecek
+          service: 'Hizmet',
+          location: 'Konum',
+          price: offer.price,
+          sentDate: new Date(offer.created_at).toLocaleString('tr-TR'),
+          status: offer.status as any,
+          responseDate: offer.updated_at ? new Date(offer.updated_at).toLocaleString('tr-TR') : undefined,
+          responseMessage: offer.notes
+        }));
+        setOffers(formattedOffers);
+      }
+    } catch (error) {
+      console.error('❌ Teklifler yüklenemedi:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+// MOCK DATA - KULLANILMIYOR
+const MOCK_OFFERS_OLD: Offer[] = [
   {
     id: 'OFF-1234',
     requestId: 'REQ-5678',
@@ -90,12 +129,12 @@ const MOCK_OFFERS: Offer[] = [
   },
 ];
 
-export const PartnerOfferHistory: React.FC = () => {
-  const [search, setSearch] = useState('');
+// Component aşağıda tanımlandı - bu satırı sil
+const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'accepted' | 'rejected' | 'pending' | 'expired'>('all');
   const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null);
 
-  const filteredOffers = MOCK_OFFERS.filter(offer => {
+  const filteredOffers = offers.filter(offer => {
     const matchesSearch = 
       offer.customer.toLowerCase().includes(search.toLowerCase()) ||
       offer.service.toLowerCase().includes(search.toLowerCase()) ||
@@ -107,11 +146,11 @@ export const PartnerOfferHistory: React.FC = () => {
   });
 
   const stats = {
-    total: MOCK_OFFERS.length,
-    accepted: MOCK_OFFERS.filter(o => o.status === 'accepted').length,
-    rejected: MOCK_OFFERS.filter(o => o.status === 'rejected').length,
-    pending: MOCK_OFFERS.filter(o => o.status === 'pending').length,
-    winRate: ((MOCK_OFFERS.filter(o => o.status === 'accepted').length / MOCK_OFFERS.length) * 100).toFixed(1),
+    total: offers.length,
+    accepted: offers.filter(o => o.status === 'accepted').length,
+    rejected: offers.filter(o => o.status === 'rejected').length,
+    pending: offers.filter(o => o.status === 'pending').length,
+    winRate: offers.length > 0 ? ((offers.filter(o => o.status === 'accepted').length / offers.length) * 100).toFixed(1) : '0',
   };
 
   const getStatusBadge = (status: Offer['status']) => {

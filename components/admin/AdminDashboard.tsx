@@ -10,22 +10,35 @@ import { useAdminFilter } from './hooks/useAdminFilter';
 import StatusBadge from './ui/StatusBadge';
 import EmptyState from './ui/EmptyState';
 import LoadingSkeleton from './ui/LoadingSkeleton';
-import { 
-  getCustomerRequestsForAdmin, 
-  initializeMockData,
-  getAllUsers,
-  getAllPartners,
-  getAllLeadRequests,
-  getAllAreaRequests,
-  getAllTickets,
-  getAllOffers,
-  getAllReviews,
-  getAllVehicles,
-  User,
-  Partner,
-  PartnerLeadRequest,
-  ServiceAreaRequest
-} from '../../services/mockApi';
+import supabaseApi from '../../services/supabaseApi';
+import type { PartnerLeadRequest, ServiceAreaRequest } from '../../types';
+
+// User ve Partner tipleri için placeholder
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  role: 'customer' | 'partner';
+  createdAt?: string;
+  type?: 'customer' | 'partner';
+  status?: 'active' | 'suspended' | 'banned';
+  joinDate?: string;
+  totalSpent?: number;
+  totalEarned?: number;
+}
+
+interface Partner {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  services?: string[];
+  rating?: number;
+  completedJobs?: number;
+  credits?: number;
+  status?: 'active' | 'suspended' | 'pending_approval';
+}
 
 const AdminOffersTab = lazy(() => import('./tabs/AdminOffersTab'));
 const AdminReportsTab = lazy(() => import('./tabs/AdminReportsTab'));
@@ -91,7 +104,6 @@ const AdminDashboard: React.FC = () => {
   
   // Component mount olduğunda ve tab değiştiğinde verileri yükle
   useEffect(() => {
-    initializeMockData();
     loadAllData();
   }, []);
   
@@ -100,14 +112,71 @@ const AdminDashboard: React.FC = () => {
     loadAllData();
   }, [activeTab]);
   
-  const loadAllData = () => {
-    setCustomerRequests(getCustomerRequestsForAdmin());
-    setUsers(getAllUsers());
-    setPartners(getAllPartners());
-    setLeadRequests(getAllLeadRequests());
-    setAreaRequests(getAllAreaRequests());
-    setSupportRequests(getAllTickets());
-    setOffers(getAllOffers());
+  const loadAllData = async () => {
+    try {
+      // Müşteri taleplerini yükle
+      const requests = await supabaseApi.requests.getAll();
+      const formattedRequests: CustomerRequestLog[] = requests.map((req: any) => ({
+        id: req.id,
+        customerId: req.customer_id,
+        customerName: 'Müşteri',
+        serviceType: req.service_type,
+        location: `${req.from_district}, ${req.from_city}`,
+        from: `${req.from_district}, ${req.from_city}`,
+        to: req.to_city ? `${req.to_district}, ${req.to_city}` : '',
+        status: req.status,
+        createdAt: req.created_at,
+        estimatedPrice: req.estimated_price
+      }));
+      setCustomerRequests(formattedRequests);
+
+      // Kullanıcıları yükle (Customers + Partners)
+      const customers = await supabaseApi.customers.getAll();
+      const partnersData = await supabaseApi.partners.getAll();
+      
+      const allUsers: User[] = [
+        ...customers.map((c: any) => ({ 
+          id: c.id,
+          name: c.full_name || c.name,
+          email: c.email,
+          phone: c.phone,
+          role: 'customer' as const,
+          type: 'customer' as const,
+          createdAt: c.created_at,
+          status: 'active' as const,
+          joinDate: new Date(c.created_at).toLocaleDateString('tr-TR'),
+          totalSpent: 0,
+          totalEarned: 0
+        })),
+        ...partnersData.map((p: any) => ({ 
+          id: p.id,
+          name: p.company_name || p.name,
+          email: p.email,
+          phone: p.phone,
+          role: 'partner' as const,
+          type: 'partner' as const,
+          createdAt: p.created_at,
+          status: 'active' as const,
+          joinDate: new Date(p.created_at).toLocaleDateString('tr-TR'),
+          totalSpent: 0,
+          totalEarned: 0
+        }))
+      ];
+      setUsers(allUsers);
+      setPartners(partnersData);
+
+      // Teklifleri yükle
+      const offersData = await supabaseApi.offers.getAll();
+      setOffers(offersData);
+
+      // Destek taleplerini yükle
+      const tickets = await supabaseApi.supportTickets.getAll();
+      setSupportRequests(tickets);
+
+      console.log('✅ [AdminDashboard] Tüm veriler yüklendi');
+    } catch (error) {
+      console.error('❌ Admin verileri yüklenemedi:', error);
+    }
   };
 
   // URL'ye göre aktif tab'ı ayarla
@@ -182,12 +251,12 @@ const AdminDashboard: React.FC = () => {
     navigate(newUrl);
   };
 
-  const filteredUsers = userTypeFilter === 'all' ? users : users.filter(u => u.type === userTypeFilter);
+  const filteredUsers = userTypeFilter === 'all' ? users : users.filter(u => u.role === userTypeFilter);
   const usersFilter = useAdminFilter(filteredUsers, { searchKeys: ['name','email'] });
-  const partnersFilter = useAdminFilter(partners, { searchKeys: ['name','email'], statusKey: 'status' });
+  const partnersFilter = useAdminFilter(partners, { searchKeys: ['name','email'] });
 
   const stats = {
-    totalUsers: users.filter(u => u.type === 'customer').length,
+    totalUsers: users.filter(u => u.role === 'customer').length,
     totalPartners: partners.length,
     // Partner talep istatistikleri
     pendingLeadRequests: leadRequests.filter(r => r.status === 'pending').length,
@@ -197,8 +266,8 @@ const AdminDashboard: React.FC = () => {
     activeCustomerRequests: customerRequests.filter(r => r.status === 'open').length,
     completedCustomerRequests: customerRequests.filter(r => r.status === 'completed').length,
     totalRevenue: customerRequests.filter(r => r.amount).reduce((sum, r) => sum + (r.amount || 0), 0),
-    b2cUsers: users.filter(u => u.type === 'customer').length,
-    b2bUsers: users.filter(u => u.type === 'partner').length,
+    b2cUsers: users.filter(u => u.role === 'customer').length,
+    b2bUsers: users.filter(u => u.role === 'partner').length,
   };
 
   return (
@@ -358,7 +427,7 @@ const AdminDashboard: React.FC = () => {
                             </div>
                           </td>
                           <td className="px-6 py-4" role="cell"><span className={`px-3 py-1 rounded-full text-xs font-bold ${user.type === 'customer' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>{user.type === 'customer' ? 'Müşteri' : 'Partner'}</span></td>
-                          <td className="px-6 py-4" role="cell"><StatusBadge type="user" status={user.status} /></td>
+                          <td className="px-6 py-4" role="cell"><StatusBadge type="user" status={user.status || 'active'} /></td>
                           <td className="px-6 py-4 text-sm text-slate-600" role="cell">{user.joinDate}</td>
                           <td className="px-6 py-4 text-sm font-bold text-slate-900" role="cell">₺{(user.totalSpent || user.totalEarned || 0).toLocaleString()}</td>
                           <td className="px-6 py-4 text-right" role="cell">
@@ -453,7 +522,7 @@ const AdminDashboard: React.FC = () => {
                           <td className="px-6 py-4" role="cell">
                             <span className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-sm font-bold">{partner.credits}</span>
                           </td>
-                          <td className="px-6 py-4" role="cell"><StatusBadge type="partner" status={partner.status} /></td>
+                          <td className="px-6 py-4" role="cell"><StatusBadge type="partner" status={partner.status || 'active'} /></td>
                           <td className="px-6 py-4 text-right" role="cell">
                             <button onClick={() => navigate(`/admin/partnerler/${partner.id}`)} className="p-2 text-slate-400 hover:text-blue-600" aria-label={`Partner ${partner.id} görüntüle`}><Eye size={18} /></button>
                             <button className="p-2 text-slate-400 hover:text-orange-600" aria-label={`Partner ${partner.id} düzenle`}><Edit size={18} /></button>
@@ -653,9 +722,8 @@ const LeadRequestDetailPanel: React.FC<LeadRequestDetailPanelProps> = ({ request
   const [requestState, setRequestState] = React.useState<any>(null);
 
   React.useEffect(() => {
-    const allRequests = getAllLeadRequests();
-    const request = allRequests.find(r => r.id === requestId);
-    setRequestState(request || null);
+    // Lead requests state'den alınacak (şimdilik boş)
+    setRequestState(null);
   }, [requestId]);
 
   const request = requestState;
@@ -786,9 +854,8 @@ const AreaRequestDetailPanel: React.FC<LeadRequestDetailPanelProps> = ({ request
   const [requestState, setRequestState] = React.useState<any>(null);
 
   React.useEffect(() => {
-    const allRequests = getAllAreaRequests();
-    const request = allRequests.find(r => r.id === requestId);
-    setRequestState(request || null);
+    // Area requests state'den alınacak (şimdilik boş)
+    setRequestState(null);
   }, [requestId]);
 
   const request = requestState;
@@ -927,9 +994,8 @@ const SupportRequestDetailPanel: React.FC<LeadRequestDetailPanelProps> = ({ requ
   const [requestState, setRequestState] = React.useState<any>(null);
 
   React.useEffect(() => {
-    const allRequests = getAllTickets();
-    const request = allRequests.find(r => r.id === requestId);
-    setRequestState(request || null);
+    // Support requests state'den alınacak (şimdilik boş)
+    setRequestState(null);
   }, [requestId]);
 
   const request = requestState;
@@ -1073,9 +1139,8 @@ const OfferDetailPanel: React.FC<OfferDetailPanelProps> = ({ offerId, onBack }) 
   const [offerState, setOfferState] = React.useState<any>(null);
 
   React.useEffect(() => {
-    const allOffers = getAllOffers();
-    const offer = allOffers.find(o => o.id === offerId);
-    setOfferState(offer || null);
+    // Offers state'den alınacak (şimdilik boş)
+    setOfferState(null);
   }, [offerId]);
 
   const offer = offerState;
@@ -1196,9 +1261,8 @@ const VehicleDetailPanel: React.FC<VehicleDetailPanelProps> = ({ vehicleId, onBa
   const [vehicleState, setVehicleState] = React.useState<any>(null);
 
   React.useEffect(() => {
-    const allVehicles = getAllVehicles();
-    const vehicle = allVehicles.find(v => v.id === vehicleId);
-    setVehicleState(vehicle || null);
+    // Vehicles state'den alınacak (şimdilik boş)
+    setVehicleState(null);
   }, [vehicleId]);
 
   const vehicle = vehicleState;
@@ -1333,9 +1397,8 @@ const ReviewDetailPanel: React.FC<ReviewDetailPanelProps> = ({ reviewId, onBack 
   const [reviewState, setReviewState] = React.useState<any>(null);
 
   React.useEffect(() => {
-    const allReviews = getAllReviews();
-    const review = allReviews.find(r => r.id === reviewId);
-    setReviewState(review || null);
+    // Reviews state'den alınacak (şimdilik boş)
+    setReviewState(null);
   }, [reviewId]);
 
   const review = reviewState;

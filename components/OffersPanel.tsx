@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Customer, Request, Offer } from '../types';
-import { seedDemoRequests, getRequestsByCustomer, getOffersForRequest, acceptOffer, rejectOffer, cancelRequest, getRequestById, createReview } from '../services/mockApi';
+import supabaseApi from '../services/supabaseApi';
 import { ArrowLeft, MapPin, CheckCircle2, XCircle, Clock, Handshake, FilePlus, Check, X, RefreshCcw, Eye, User, Phone, Navigation, ShieldCheck, DollarSign, Ban, Star, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -66,54 +66,87 @@ const OffersPanel: React.FC = () => {
   const [requestToRate, setRequestToRate] = useState<Request | null>(null);
 
   useEffect(() => {
-    if (customer) {
-      console.log('🔵 [OffersPanel] Customer ID:', customer.id);
-      seedDemoRequests(customer.id);
-      const customerRequests = getRequestsByCustomer(customer.id);
-      console.log('🔵 [OffersPanel] Loaded Requests:', customerRequests);
-      setRequests(customerRequests);
-      
-      // Otomatik yenileme - Partner ilerlemesini takip et
-      const refreshInterval = setInterval(() => {
-        const updatedRequests = getRequestsByCustomer(customer.id);
-        setRequests(updatedRequests);
-        
-        // Seçili request varsa onu da güncelle
-        if (selectedRequest) {
-          const updated = getRequestById(selectedRequest.id);
-          if (updated) {
-            setSelectedRequest(updated);
-          }
+    const loadRequests = async () => {
+      if (customer) {
+        console.log('🔵 [OffersPanel] Customer ID:', customer.id);
+        const customerRequests = await supabaseApi.requests.getByCustomerId(customer.id);
+        console.log('🔵 [OffersPanel] Loaded Requests:', customerRequests);
+        setRequests(customerRequests);
+      }
+    };
+    
+    loadRequests();
+    
+    // Real-time subscription - Talep değişikliklerini dinle
+    const subscription = supabaseApi.realtime.subscribeToRequests((payload) => {
+      console.log('🔵 [OffersPanel] Request update:', payload);
+      if (payload.eventType === 'UPDATE' && payload.new.customer_id === customer?.id) {
+        // Seçili request güncellendi
+        if (selectedRequest?.id === payload.new.id) {
+          setSelectedRequest(payload.new);
         }
-      }, 5000); // Her 5 saniyede bir yenile
-      
-      return () => clearInterval(refreshInterval);
-    }
-  }, [customer, selectedRequest?.id]);
+        // Request listesini yenile
+        loadRequests();
+      }
+    });
+    
+    return () => {
+      supabaseApi.realtime.unsubscribe(subscription);
+    };
+  }, [customer?.id]);
 
-  const loadOffers = (req: Request) => {
+  const loadOffers = async (req: Request) => {
     setSelectedRequest(req);
     setLoadingOffers(true);
     console.log('🟡 [OffersPanel] Loading offers for request:', req.id);
-    setTimeout(() => { // simulate latency
-      const requestOffers = getOffersForRequest(req.id);
+    
+    try {
+      const requestOffers = await supabaseApi.offers.getByRequestId(req.id);
       console.log('🟡 [OffersPanel] Found offers:', requestOffers);
       setOffers(requestOffers);
+      
+      // Real-time subscription - Yeni teklifleri dinle
+      const offerSubscription = supabaseApi.realtime.subscribeToOffers(req.id, (payload) => {
+        console.log('🟡 [OffersPanel] Offer update:', payload);
+        if (payload.eventType === 'INSERT') {
+          setOffers(prev => [...prev, payload.new]);
+        } else if (payload.eventType === 'UPDATE') {
+          setOffers(prev => prev.map(o => o.id === payload.new.id ? payload.new : o));
+        }
+      });
+    } catch (error) {
+      console.error('Failed to load offers:', error);
+    } finally {
       setLoadingOffers(false);
-    }, 300);
-  };
-
-  const handleAccept = (offerId: string) => {
-    acceptOffer(offerId);
-    if (selectedRequest && customer) {
-      setOffers(getOffersForRequest(selectedRequest.id));
-      setRequests(getRequestsByCustomer(customer.id));
     }
   };
 
-  const handleReject = (offerId: string) => {
-    rejectOffer(offerId);
-    if (selectedRequest) setOffers(getOffersForRequest(selectedRequest.id));
+  const handleAccept = async (offerId: string) => {
+    try {
+      await supabaseApi.offers.accept(offerId);
+      if (selectedRequest && customer) {
+        const updatedOffers = await supabaseApi.offers.getByRequestId(selectedRequest.id);
+        setOffers(updatedOffers);
+        const updatedRequests = await supabaseApi.requests.getByCustomerId(customer.id);
+        setRequests(updatedRequests);
+      }
+    } catch (error) {
+      console.error('Failed to accept offer:', error);
+      alert('Teklif kabul edilemedi.');
+    }
+  };
+
+  const handleReject = async (offerId: string) => {
+    try {
+      await supabaseApi.offers.reject(offerId);
+      if (selectedRequest) {
+        const updatedOffers = await supabaseApi.offers.getByRequestId(selectedRequest.id);
+        setOffers(updatedOffers);
+      }
+    } catch (error) {
+      console.error('Failed to reject offer:', error);
+      alert('Teklif reddedilemedi.');
+    }
   };
 
   // Müşteri talep iptal handler'ı
@@ -122,21 +155,32 @@ const OffersPanel: React.FC = () => {
     setShowCancelConfirm(true);
   };
 
-  const confirmCancelRequest = () => {
+  const confirmCancelRequest = async () => {
     if (!requestToCancel || !customer) return;
-    const success = cancelRequest(requestToCancel.id);
-    if (success) {
-      setRequests(getRequestsByCustomer(customer.id));
+    
+    try {
+      if (requestToCancel.status !== 'open') {
+        alert('Bu talep iptal edilemez. Sadece açık talepler iptal edilebilir.');
+        return;
+      }
+      
+      await supabaseApi.requests.updateStatus(requestToCancel.id, 'cancelled');
+      const updatedRequests = await supabaseApi.requests.getByCustomerId(customer.id);
+      setRequests(updatedRequests);
+      
       if (selectedRequest?.id === requestToCancel.id) {
         setSelectedRequest(null);
         setOffers([]);
       }
+      
       alert('Talep iptal edildi.');
-    } else {
-      alert('Bu talep iptal edilemez. Sadece açık talepler iptal edilebilir.');
+    } catch (error) {
+      console.error('Failed to cancel request:', error);
+      alert('Talep iptal edilemedi.');
+    } finally {
+      setShowCancelConfirm(false);
+      setRequestToCancel(null);
     }
-    setShowCancelConfirm(false);
-    setRequestToCancel(null);
   };
 
   // Müşteri değerlendirme handler'ı
@@ -147,31 +191,37 @@ const OffersPanel: React.FC = () => {
     setShowRatingModal(true);
   };
 
-  const handleSubmitRating = () => {
+  const handleSubmitRating = async () => {
     if (!requestToRate || ratingValue === 0) {
       alert('Lütfen bir puan seçin.');
       return;
     }
     
-    // Partner bilgisini request'ten al
-    const partnerId = requestToRate.assignedPartnerId || 'UNKNOWN';
-    const partnerName = requestToRate.assignedPartnerName || 'Partner';
-    
-    // mockApi.createReview kullanarak kaydet
-    createReview({
-      jobId: requestToRate.id,
-      partnerId: partnerId,
-      partnerName: partnerName,
-      customerId: customer?.id || 'UNKNOWN',
-      customerName: customer?.name || 'Müşteri',
-      service: requestToRate.serviceType,
-      rating: ratingValue,
-      comment: ratingComment,
-      tags: [] // Müşteri tarafında tag seçimi yok şu an
-    });
-    
-    alert('Değerlendirmeniz için teşekkürler!');
-    setShowRatingModal(false);
+    try {
+      // Partner bilgisini request'ten al
+      const partnerId = requestToRate.assignedPartnerId || '';
+      const partnerName = requestToRate.assignedPartnerName || 'Partner';
+      
+      if (!partnerId) {
+        alert('Partner bilgisi bulunamadı.');
+        return;
+      }
+      
+      // supabaseApi.partnerReviews kullanarak kaydet
+      await supabaseApi.partnerReviews.create({
+        jobId: requestToRate.id,
+        partnerId: partnerId,
+        partnerName: partnerName,
+        customerId: customer?.id || '',
+        customerName: `${customer?.firstName || ''} ${customer?.lastName || ''}`.trim(),
+        service: requestToRate.serviceType,
+        rating: ratingValue,
+        comment: ratingComment,
+        tags: [] // Müşteri tarafında tag seçimi yok şu an
+      });
+      
+      alert('Değerlendirmeniz için teşekkürler!');
+      setShowRatingModal(false);
     setRequestToRate(null);
   };
 

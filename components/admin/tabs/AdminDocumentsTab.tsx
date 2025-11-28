@@ -8,7 +8,7 @@ import { Search, Eye, CheckCircle, XCircle, Download, Calendar, FileText, AlertT
 import { useAdminFilter } from '../hooks/useAdminFilter';
 import StatusBadge from '../ui/StatusBadge';
 import EmptyState from '../ui/EmptyState';
-import { getAllDocuments, updateDocumentStatus } from '../../../services/mockApi';
+import supabaseApi from '../../../services/supabaseApi';
 import { PartnerDocument } from '../../../types';
 
 const DOCUMENT_TYPE_LABELS: Record<string, string> = {
@@ -38,14 +38,18 @@ const AdminDocumentsTab: React.FC = () => {
   const [dateFilter, setDateFilter] = useState<string>('all');
   const [documentTypeFilter, setDocumentTypeFilter] = useState<string>('all');
 
-  // Load documents from mockApi on mount
+  // Load documents from Supabase on mount
   useEffect(() => {
     loadDocuments();
   }, []);
 
-  const loadDocuments = () => {
-    const docs = getAllDocuments();
-    setDocuments(docs);
+  const loadDocuments = async () => {
+    try {
+      const docs = await supabaseApi.partnerDocuments.getAll();
+      setDocuments(docs);
+    } catch (error) {
+      console.error('❌ Belgeler yüklenemedi:', error);
+    }
   };
 
   // Unique partner listesi
@@ -89,10 +93,19 @@ const AdminDocumentsTab: React.FC = () => {
     { searchKeys: ['partnerName', 'fileName'], statusKey: 'status' }
   );
 
-  const handleApprove = (doc: PartnerDocument) => {
-    updateDocumentStatus(doc.id, 'approved');
-    loadDocuments();
-    setSelectedDoc(null);
+  const handleApprove = async (doc: PartnerDocument) => {
+    try {
+      await supabaseApi.partnerDocuments.update(doc.id, {
+        status: 'approved',
+        reviewedAt: new Date().toISOString()
+      });
+      
+      await loadDocuments();
+      setSelectedDoc(null);
+    } catch (error) {
+      console.error('❌ Belge onaylanamadı:', error);
+      alert('Belge onaylanırken hata oluştu.');
+    }
   };
 
   const openRejectModal = (doc: PartnerDocument) => {
@@ -107,16 +120,26 @@ const AdminDocumentsTab: React.FC = () => {
     rejected: documents.filter(d => d.status === 'rejected').length,
   };
 
-  const submitRejection = () => {
+  const submitRejection = async () => {
     if (!selectedDoc || !rejectionReason.trim()) return;
     
-    // mockApi ile belge durumunu güncelle
-    updateDocumentStatus(selectedDoc.id, 'rejected', rejectionReason);
-    loadDocuments();
-    
-    setShowRejectModal(false);
-    setRejectionReason('');
-    setSelectedDoc(null);
+    try {
+      // Supabase'de belge durumunu güncelle
+      await supabaseApi.partnerDocuments.update(selectedDoc.id, {
+        status: 'rejected',
+        rejectionReason: rejectionReason,
+        reviewedAt: new Date().toISOString()
+      });
+      
+      await loadDocuments();
+      
+      setShowRejectModal(false);
+      setRejectionReason('');
+      setSelectedDoc(null);
+    } catch (error) {
+      console.error('❌ Belge reddedilemedi:', error);
+      alert('Belge reddedilirken hata oluştu.');
+    }
   };
 
   return (

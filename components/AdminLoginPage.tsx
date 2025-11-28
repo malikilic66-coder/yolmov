@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shield, Lock, Mail, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
+import supabaseApi from '../services/supabaseApi';
 
 const AdminLoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -9,15 +10,33 @@ const AdminLoginPage: React.FC = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
+    setLoading(true);
     
-    // Mock admin credentials
-    if (email === 'admin@yolmov.com' && password === 'admin123') {
-      navigate('/admin');
-    } else {
-      setError('Geçersiz e-posta veya şifre');
+    try {
+      // Supabase Auth ile giriş
+      await supabaseApi.auth.signIn(email, password);
+      
+      // Kullanıcı rolünü kontrol et
+      const userRole = await supabaseApi.auth.getUserRole();
+      
+      if (userRole?.type === 'admin') {
+        // Admin kullanıcısı - Dashboard'a yönlendir
+        navigate('/admin');
+      } else {
+        // Admin değil
+        setError('Bu hesap admin hesabı değil');
+        await supabaseApi.auth.signOut();
+      }
+    } catch (err: any) {
+      console.error('Login error:', err);
+      setError(err.message || 'Geçersiz e-posta veya şifre');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -96,9 +115,10 @@ const AdminLoginPage: React.FC = () => {
 
             <button
               type="submit"
-              className="w-full mt-8 py-4 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl font-bold text-lg shadow-lg shadow-orange-200 hover:shadow-xl hover:scale-[1.02] transition-all"
+              disabled={loading}
+              className="w-full mt-8 py-4 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl font-bold text-lg shadow-lg shadow-orange-200 hover:shadow-xl hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Giriş Yap
+              {loading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
             </button>
 
             <div className="mt-6 text-center">

@@ -3,9 +3,10 @@
  * Partnerin ödemeleri, komisyon detayları ve kazanç takibi
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DollarSign, TrendingUp, TrendingDown, Calendar, Download, Eye, CreditCard, Wallet, ArrowUpRight, ArrowDownLeft, Receipt, Filter, CheckCircle, Clock, XCircle, Coins, Percent } from 'lucide-react';
 import { motion } from 'framer-motion';
+import supabaseApi from '../services/supabaseApi';
 
 interface Payment {
   id: string;
@@ -22,8 +23,32 @@ interface Payment {
   service?: string;
 }
 
-// MOCK DATA
-const MOCK_PAYMENTS: Payment[] = [
+const PartnerPayments: React.FC = () => {
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Supabase'den ödemeleri yükle
+  useEffect(() => {
+    loadPayments();
+  }, []);
+
+  const loadPayments = async () => {
+    try {
+      setLoading(true);
+      const partnerId = localStorage.getItem('yolmov_partner_id') || '';
+      
+      // TODO: transactions API'si eklenecek, şimdilik boş array
+      const formattedPayments: Payment[] = [];
+      setPayments(formattedPayments);
+    } catch (error) {
+      console.error('❌ Ödemeler yüklenemedi:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+// MOCK DATA - KULLANILMIYOR
+const MOCK_PAYMENTS_OLD: Payment[] = [
   {
     id: 'PAY-1234',
     jobId: 'JOB-4923',
@@ -92,8 +117,8 @@ const MOCK_PAYMENTS: Payment[] = [
   },
 ];
 
-export const PartnerPayments: React.FC = () => {
-  const [filterType, setFilterType] = useState<'all' | 'earning' | 'commission' | 'fee'>('all');
+// Component aşağıda tanımlandı - bu satırı sil
+const [filterType, setFilterType] = useState<'all' | 'earning' | 'commission' | 'fee'>('all');
   const [filterStatus, setFilterStatus] = useState<'all' | 'completed' | 'pending' | 'failed'>('all');
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
   const [startDate, setStartDate] = useState('');
@@ -102,22 +127,22 @@ export const PartnerPayments: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [showExportModal, setShowExportModal] = useState(false);
 
-  const filteredPayments = MOCK_PAYMENTS.filter(payment => {
+  const filteredPayments = payments.filter(payment => {
     const matchesType = filterType === 'all' || payment.type === filterType;
     const matchesStatus = filterStatus === 'all' || payment.status === filterStatus;
     return matchesType && matchesStatus;
   });
 
   // Hesaplamalar (Komisyon yok - sadece net kazanç)
-  const totalEarnings = MOCK_PAYMENTS
+  const totalEarnings = payments
     .filter(p => p.type === 'earning' && p.status === 'completed')
     .reduce((sum, p) => sum + (p.grossAmount || p.amount), 0);
 
-  const pendingPayments = MOCK_PAYMENTS
+  const pendingPayments = payments
     .filter(p => p.status === 'pending')
     .reduce((sum, p) => sum + p.amount, 0);
   
-  const completedJobsCount = MOCK_PAYMENTS
+  const completedJobsCount = payments
     .filter(p => p.type === 'earning' && p.status === 'completed').length;
 
   const getStatusBadge = (status: Payment['status']) => {

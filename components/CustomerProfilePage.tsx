@@ -1,6 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Customer } from '../types';
+import supabaseApi from '../services/supabaseApi';
 import { 
   Phone, Mail, MapPin, User, Edit3, Check, X, Calendar, ShieldCheck, LogOut,
   CreditCard, Bell, Lock, Heart, Home, Briefcase, MapPinned, Plus, Trash2,
@@ -8,12 +9,9 @@ import {
 } from 'lucide-react';
 import { CITIES_WITH_DISTRICTS } from '../constants';
 
-// Mock Data for Extended Features
-const MOCK_ORDERS = [
-  { id: 'REQ-4521', service: 'Çekici Hizmeti', provider: 'Kurtarma Ekibi A.Ş.', date: '18 Kas 2025 14:35', status: 'Tamamlandı', amount: 850, from: 'Kadıköy, İstanbul', to: 'Maltepe Servis', rating: 5 },
-  { id: 'REQ-4489', service: 'Akü Takviyesi', provider: 'Hızlı Yol Yardım', date: '12 Kas 2025 09:20', status: 'Tamamlandı', amount: 400, from: 'Beşiktaş, İstanbul', to: null, rating: 5 },
-  { id: 'REQ-4401', service: 'Lastik Değişimi', provider: 'Anında Yardım', date: '05 Kas 2025 16:45', status: 'İptal', amount: 0, from: 'Şişli, İstanbul', to: null, rating: null },
-  { id: 'REQ-4322', service: 'Yakıt Desteği', provider: 'Acil Müdahale Ekibi', date: '28 Eki 2025 11:10', status: 'Tamamlandı', amount: 300, from: 'Ümraniye, İstanbul', to: null, rating: 4 }
+// Mock Data for Extended Features - ORDERS artık state'ten geliyor
+const MOCK_ORDERS_TEMPLATE = [
+  { id: 'REQ-4521', service: 'Çekici Hizmeti', provider: 'Kurtarma Ekibi A.Ş.', date: '18 Kas 2025 14:35', status: 'Tamamlandı', amount: 850, from: 'Kadıköy, İstanbul', to: 'Maltepe Servis', rating: 5 }
 ];
 
 const MOCK_FAVORITES = [
@@ -29,29 +27,58 @@ const MOCK_SAVED_ADDRESSES = [
 const CustomerProfilePage: React.FC = () => {
   const navigate = useNavigate();
   
-  // Get customer from localStorage
-  const storedCustomer = useMemo(() => {
-    const stored = localStorage.getItem('yolmov_customer');
-    if (stored) {
-      try {
-        return JSON.parse(stored) as Customer;
-      } catch (e) {
-        console.error('Failed to parse customer data:', e);
-      }
-    }
-    return null;
+  const [customer, setCustomer] = useState<Customer | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState<Customer>({} as Customer);
+  const [orders, setOrders] = useState<typeof MOCK_ORDERS>([]);
+
+  // Load customer data from Supabase
+  useEffect(() => {
+    loadCustomerData();
   }, []);
 
-  // Redirect if not logged in
-  React.useEffect(() => {
-    if (!storedCustomer) {
-      navigate('/giris/musteri');
-    }
-  }, [storedCustomer, navigate]);
+  const loadCustomerData = async () => {
+    try {
+      setLoading(true);
+      const customerId = localStorage.getItem('yolmov_customer_id');
+      
+      if (!customerId) {
+        navigate('/giris/musteri');
+        return;
+      }
 
-  const [customer, setCustomer] = useState<Customer>(storedCustomer || {} as Customer);
-  const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState<Customer>(customer);
+      // Customer bilgilerini çek
+      const customerData = await supabaseApi.customers.getById(customerId);
+      if (customerData) {
+        setCustomer(customerData);
+        setForm(customerData);
+      }
+
+      // Müşterinin request geçmişini çek
+      const requestHistory = await supabaseApi.requests.getByCustomerId(customerId);
+      if (requestHistory) {
+        // Request'leri MOCK_ORDERS formatına dönüştür
+        const formattedOrders = requestHistory.map((req: any) => ({
+          id: req.id,
+          service: req.service_type,
+          provider: 'Partner',
+          date: new Date(req.created_at).toLocaleString('tr-TR'),
+          status: req.status === 'completed' ? 'Tamamlandı' : req.status === 'cancelled' ? 'İptal' : 'Devam Ediyor',
+          amount: req.estimated_price || 0,
+          from: `${req.from_district}, ${req.from_city}`,
+          to: req.to_city ? `${req.to_district}, ${req.to_city}` : null,
+          rating: null
+        }));
+        setOrders(formattedOrders);
+      }
+    } catch (error) {
+      console.error('❌ Müşteri bilgileri yüklenemedi:', error);
+      navigate('/giris/musteri');
+    } finally {
+      setLoading(false);
+    }
+  };
   const [activeTab, setActiveTab] = useState<'profile' | 'orders' | 'favorites' | 'addresses' | 'notifications' | 'security'>('profile');
   
   // Modals
@@ -86,10 +113,18 @@ const CustomerProfilePage: React.FC = () => {
     }
   };
 
-  const handleSave = () => {
-    localStorage.setItem('yolmov_customer', JSON.stringify(form));
-    setCustomer(form);
-    setIsEditing(false);
+  const handleSave = async () => {
+    try {
+      if (!customer?.id) return;
+      
+      await supabaseApi.customers.update(customer.id, form);
+      setCustomer(form);
+      setIsEditing(false);
+      alert('✅ Profil bilgileriniz güncellendi!');
+    } catch (error) {
+      console.error('❌ Profil güncellenemedi:', error);
+      alert('Profil güncellenirken hata oluştu. Lütfen tekrar deneyin.');
+    }
   };
 
   const handleLogout = () => {
@@ -282,7 +317,12 @@ const CustomerProfilePage: React.FC = () => {
                 <h3 className="text-2xl font-display font-bold text-gray-900">Son Taleplerim</h3>
               </div>
               <div className="space-y-4">
-                {MOCK_ORDERS.map(order => (
+                {loading ? (
+                  <p className="text-center text-gray-500 py-8">Yükleniyor...</p>
+                ) : orders.length === 0 ? (
+                  <p className="text-center text-gray-500 py-8">Henüz talep oluşturmadınız.</p>
+                ) : (
+                  orders.map(order => (
                   <div key={order.id} className="p-5 rounded-xl border border-gray-100 hover:border-brand-orange hover:shadow-md transition-all cursor-pointer group" onClick={() => setSelectedOrder(order)}>
                     <div className="flex items-start justify-between mb-3">
                       <div>
@@ -308,6 +348,8 @@ const CustomerProfilePage: React.FC = () => {
                       )}
                     </div>
                   </div>
+                  ))
+                )}
                 ))}
               </div>
             </div>

@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Phone, Lock, Eye, EyeOff, ArrowRight, Star, Briefcase } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Customer } from '../types';
+import supabaseApi from '../services/supabaseApi';
 
 interface LoginPageProps {
   userType: 'customer' | 'partner';
@@ -23,38 +24,50 @@ const LoginPage: React.FC<LoginPageProps> = ({ userType }) => {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const isCustomer = userType === 'customer';
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     setError('');
+    setLoading(true);
     
-    const testCreds = TEST_CREDENTIALS[userType];
-    
-    // Test login kontrolü
-    if (phone === testCreds.phone && password === testCreds.password) {
-      if (isCustomer) {
-        // Mock customer profili oluştur
-        const mockCustomer: Customer = {
-          id: 'CUST-001',
-          firstName: 'Test',
-          lastName: 'Kullanıcı',
-          email: 'test@example.com',
-          phone: phone,
-          city: 'İstanbul',
-          district: 'Kadıköy',
-          address: 'Test Adres',
-          avatarUrl: ''
-        };
-        localStorage.setItem('yolmov_customer', JSON.stringify(mockCustomer));
+    try {
+      // Email formatına çevir (phone number yerine)
+      const email = phone.includes('@') ? phone : `${phone}@yolmov.temp`;
+      
+      // Supabase Auth ile giriş
+      await supabaseApi.auth.signIn(email, password);
+      
+      // Kullanıcı rolünü kontrol et
+      const userRole = await supabaseApi.auth.getUserRole();
+      
+      if (isCustomer && userRole?.type === 'customer') {
+        // Müşteri hesabı - localStorage'a kaydet (geriye uyumluluk için)
+        const currentUser = await supabaseApi.auth.getCurrentUser();
+        const customerData = await supabaseApi.customers.getById(currentUser!.id);
+        if (customerData) {
+          localStorage.setItem('yolmov_customer', JSON.stringify(customerData));
+        }
         navigate('/musteri/profil');
-      } else {
-        // Partner login
-        localStorage.setItem('yolmov_partner', JSON.stringify({ phone, name: 'Test Acente' }));
+      } else if (!isCustomer && userRole?.type === 'partner') {
+        // Partner hesabı
+        const currentUser = await supabaseApi.auth.getCurrentUser();
+        const partnerData = await supabaseApi.partners.getById(currentUser!.id);
+        if (partnerData) {
+          localStorage.setItem('yolmov_partner', JSON.stringify(partnerData));
+        }
         navigate('/partner');
+      } else {
+        // Yanlış hesap tipi
+        setError(`Bu hesap ${isCustomer ? 'müşteri' : 'partner'} hesabı değil`);
+        await supabaseApi.auth.signOut();
       }
-    } else {
-      setError('Telefon veya şifre hatalı!');
+    } catch (err: any) {
+      console.error('Login error:', err);
+      setError(err.message || 'Telefon veya şifre hatalı!');
+    } finally {
+      setLoading(false);
     }
   };
 

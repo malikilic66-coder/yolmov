@@ -8,7 +8,6 @@ import Advantages from './components/Advantages';
 import Campaigns from './components/Campaigns';
 import Footer from './components/Footer';
 import CookieConsentBanner from './components/CookieConsentBanner';
-import { initDemoData } from './services/demoData';
 
 // Lazy load pages for better performance
 const AboutPage = React.lazy(() => import('./components/AboutPage'));
@@ -97,11 +96,6 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
 };
 
 function App() {
-  // Initialize demo data on first load
-  useEffect(() => {
-    initDemoData();
-  }, []);
-
   return (
     <BrowserRouter>
       <AppLayout>

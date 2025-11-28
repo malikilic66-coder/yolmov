@@ -1,0 +1,55 @@
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL || 'https://uwslxmciglqxpvfbgjzm.supabase.co';
+const supabaseAnonKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV3c2x4bWNpZ2xxeHB2ZmJnanptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzMxNDk4MzgsImV4cCI6MjA0ODcyNTgzOH0.BPiYgGz9iMevhBzrTEjyb6GQ6qmhHLHXwWxQ0g7g9eI';
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Missing Supabase environment variables');
+}
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true
+  },
+  realtime: {
+    params: {
+      eventsPerSecond: 10
+    }
+  }
+});
+
+// Helper types for database
+export type Tables<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Row'];
+export type Enums<T extends keyof Database['public']['Enums']> = Database['public']['Enums'][T];
+
+// Database type definitions (will be generated after schema creation)
+export interface Database {
+  public: {
+    Tables: {
+      customers: {
+        Row: {
+          id: string;
+          first_name: string;
+          last_name: string;
+          phone: string;
+          email: string | null;
+          avatar_url: string | null;
+          city: string | null;
+          district: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['customers']['Row'], 'id' | 'created_at' | 'updated_at'>;
+        Update: Partial<Database['public']['Tables']['customers']['Insert']>;
+      };
+      // Diğer tablolar schema oluşturulduktan sonra eklenecek
+    };
+    Enums: {
+      request_status: 'open' | 'matched' | 'in_progress' | 'completed' | 'cancelled';
+      offer_status: 'sent' | 'accepted' | 'rejected' | 'withdrawn';
+      admin_role: 'super_admin' | 'support' | 'finance' | 'operations';
+    };
+  };
+}

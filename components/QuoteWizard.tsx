@@ -25,7 +25,7 @@ import {
 } from 'lucide-react';
 import { CITIES_WITH_DISTRICTS } from '../constants';
 import { compressImage, isImageFile } from '../utils/imageCompression';
-import { createMockRequest } from '../services/mockApi';
+import { supabaseApi } from '../services/supabaseApi';
 
 const STEPS = [
   { id: 1, title: 'Araç Bilgileri' },
@@ -134,75 +134,106 @@ const QuoteWizard: React.FC = () => {
     return isValid;
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (validateStep(currentStep)) {
       if (currentStep === 4) {
-        // Submit to mockApi
+        // Submit to Supabase
         setIsSubmitting(true);
         
-        // Get customer ID
-        const customerId = customer?.id || `GUEST-${Date.now()}`;
-        
-        // Build service type from formData
-        const serviceTypeMap: Record<string, string> = {
-          'towing': 'cekici',
-          'battery': 'aku',
-          'fuel': 'yakit',
-          'tire': 'lastik',
-          'locksmith': 'anahtar'
-        };
-        
-        // Build description
-        const description = [
-          `${formData.make} ${formData.model} (${formData.year})`,
-          formData.condition === 'broken' ? 'Arızalı/Kazalı' : 'Çalışır durumda',
-          formData.note || ''
-        ].filter(Boolean).join(' - ');
-        
-        // Build from location
-        const fromLocation = [
-          formData.fromAddress,
-          formData.fromDistrict,
-          formData.fromCity
-        ].filter(Boolean).join(', ');
-        
-        // Build to location (if exists)
-        const toLocation = formData.toCity ? [
-          formData.toAddress,
-          formData.toDistrict,
-          formData.toCity
-        ].filter(Boolean).join(', ') : undefined;
-        
-        // Vehicle info
-        const vehicleInfo = `${formData.make} ${formData.model} ${formData.year}`;
-        
-        // Hasar fotoğraflarını base64'e çevir (Partner görsün diye)
-        const damagePhotoUrls = photoPreviewUrls.length > 0 ? photoPreviewUrls : undefined;
-        
         try {
-          // Create request in mockApi with extended fields
-          const newRequest = createMockRequest({
-            customerId,
-            serviceType: serviceTypeMap[formData.serviceType] || 'cekici',
+          // Get customer info
+          const customerName = formData.useRegisteredContact && customer
+            ? `${customer.firstName} ${customer.lastName}`
+            : `${formData.firstName} ${formData.lastName}`;
+          
+          const customerPhone = formData.useRegisteredContact && customer
+            ? customer.phone
+            : formData.phone;
+          
+          const customerId = customer?.id || null;
+          
+          // Build service type from formData
+          const serviceTypeMap: Record<string, string> = {
+            'towing': 'cekici',
+            'battery': 'aku',
+            'fuel': 'yakit',
+            'tire': 'lastik',
+            'locksmith': 'anahtar'
+          };
+          
+          // Build from location
+          const fromLocation = [
+            formData.fromAddress,
+            formData.fromDistrict,
+            formData.fromCity
+          ].filter(Boolean).join(', ');
+          
+          // Build to location (if exists)
+          const toLocation = formData.toCity ? [
+            formData.toAddress,
+            formData.toDistrict,
+            formData.toCity
+          ].filter(Boolean).join(', ') : null;
+          
+          // Vehicle info
+          const vehicleInfo = `${formData.make} ${formData.model} ${formData.year}`;
+          
+          // Build description
+          const description = [
+            `${formData.make} ${formData.model} (${formData.year})`,
+            formData.condition === 'broken' ? 'Arızalı/Kazalı' : 'Çalışır durumda',
+            formData.hasLoad ? `Yük var: ${formData.loadDescription}` : '',
+            formData.note || ''
+          ].filter(Boolean).join(' - ');
+          
+          // Upload photos to Supabase Storage
+          let photoUrls: string[] = [];
+          if (formData.damagePhotos.length > 0) {
+            console.log('📸 Uploading photos to Supabase Storage...');
+            
+            for (const photo of formData.damagePhotos) {
+              try {
+                const photoUrl = await supabaseApi.storage.uploadCustomerPhoto(photo, customerId);
+                photoUrls.push(photoUrl);
+              } catch (error) {
+                console.error('Photo upload failed:', error);
+                // Continue with other photos
+              }
+            }
+            
+            console.log(`✅ ${photoUrls.length} photos uploaded successfully`);
+          }
+          
+          // Create request in Supabase
+          const newRequest = await supabaseApi.requests.create({
+            customer_id: customerId,
+            customer_name: customerName,
+            customer_phone: customerPhone,
+            service_type: serviceTypeMap[formData.serviceType] || 'cekici',
             description,
-            fromLocation,
-            toLocation,
-            vehicleInfo,
-            // Yeni genişletilmiş alanlar
-            vehicleCondition: formData.condition as 'running' | 'broken',
-            hasLoad: formData.hasLoad,
-            loadDescription: formData.loadDescription || undefined,
-            damagePhotoUrls,
+            from_location: fromLocation,
+            to_location: toLocation,
+            vehicle_info: vehicleInfo,
+            vehicle_condition: formData.condition as 'running' | 'broken',
+            has_load: formData.hasLoad,
+            load_description: formData.loadDescription || null,
             timing: formData.timing as 'now' | 'week' | 'later',
-            customerPhone: formData.phone || customer?.phone
+            damage_photo_urls: photoUrls.length > 0 ? photoUrls : null,
+            from_coordinates: formData.fromCoordinates.lat !== 0 
+              ? `${formData.fromCoordinates.lat},${formData.fromCoordinates.lon}` 
+              : null,
+            to_coordinates: formData.toCoordinates.lat !== 0 
+              ? `${formData.toCoordinates.lat},${formData.toCoordinates.lon}` 
+              : null,
           });
           
           console.log('✅ Teklif talebi oluşturuldu:', newRequest);
           
-          setTimeout(() => {
-            setIsSubmitting(false);
-            setCurrentStep(5);
-          }, 1000);
+          // Save request ID for tracking
+          localStorage.setItem('yolmov_last_request_id', newRequest.id);
+          
+          setIsSubmitting(false);
+          setCurrentStep(5);
         } catch (error) {
           console.error('❌ Talep oluşturma hatası:', error);
           setIsSubmitting(false);
