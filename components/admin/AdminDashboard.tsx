@@ -1,6 +1,6 @@
 import React, { useState, lazy, Suspense, useEffect } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
-import { Users, Shield, FileText, Search, Eye, Edit, Trash2, UserPlus, CheckCircle, DollarSign, Mail, Phone, Star, MapPin, Clock, User, CreditCard, XCircle, Truck, Calendar } from 'lucide-react';
+import { Users, Shield, FileText, Search, Eye, Edit, Trash2, UserPlus, CheckCircle, DollarSign, Mail, Phone, Star, MapPin, Clock, User as UserIcon, CreditCard, XCircle, Truck, Calendar } from 'lucide-react';
 import AdminSidebar from './AdminSidebar';
 import AdminHeader from './AdminHeader';
 import RequestDetailModal from './modals/RequestDetailModal';
@@ -1024,7 +1024,7 @@ const SupportRequestDetailPanel: React.FC<LeadRequestDetailPanelProps> = ({ requ
               </div>
             </div>
             <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl">
-              <User size={20} className="text-slate-400" />
+              <UserIcon size={20} className="text-slate-400" />
               <div>
                 <p className="text-xs text-slate-500">Atanan</p>
                 <p className="font-medium text-slate-900">{request.assignedTo || 'Henüz atanmadı'}</p>
@@ -1128,7 +1128,7 @@ const OfferDetailPanel: React.FC<OfferDetailPanelProps> = ({ offerId, onBack }) 
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl">
-            <User size={20} className="text-slate-400" />
+            <UserIcon size={20} className="text-slate-400" />
             <div>
               <p className="text-xs text-slate-500">Partner ID</p>
               <p className="font-medium text-slate-900">{offer.partnerId}</p>
@@ -1265,7 +1265,7 @@ const VehicleDetailPanel: React.FC<VehicleDetailPanelProps> = ({ vehicleId, onBa
             </div>
           </div>
           <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl">
-            <User size={20} className="text-slate-400" />
+            <UserIcon size={20} className="text-slate-400" />
             <div>
               <p className="text-xs text-slate-500">Sürücü</p>
               <p className="font-medium text-slate-900">{vehicle.driver}</p>
@@ -1381,7 +1381,7 @@ const ReviewDetailPanel: React.FC<ReviewDetailPanelProps> = ({ reviewId, onBack 
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl">
-            <User size={20} className="text-slate-400" />
+            <UserIcon size={20} className="text-slate-400" />
             <div>
               <p className="text-xs text-slate-500">Müşteri</p>
               <p className="font-bold text-slate-900">{review.customerName}</p>
@@ -1511,7 +1511,7 @@ const CustomerRequestDetailPanel: React.FC<CustomerRequestDetailPanelProps> = ({
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl">
-            <User size={20} className="text-slate-400" />
+            <UserIcon size={20} className="text-slate-400" />
             <div>
               <p className="text-xs text-slate-500">Müşteri ID</p>
               <p className="font-medium text-slate-900">{request.customerId}</p>
