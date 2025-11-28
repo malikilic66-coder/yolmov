@@ -31,13 +31,19 @@ const LoginPage: React.FC<LoginPageProps> = ({ userType }) => {
 
   const isCustomer = userType === 'customer';
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    
+    console.log('🔵 handleSubmit called', { mode, isCustomer, email, password: password ? '***' : 'empty' });
+    
     setError('');
     setLoading(true);
     
     try {
       if (mode === 'register' && isCustomer) {
         // ✅ YENİ MÜŞTERİ KAYDI - Supabase Auth ile
+        console.log('📝 Register mode');
+        
         if (!email || !firstName || !lastName || !password || !phone) {
           setError('Lütfen tüm alanları doldurun');
           setLoading(false);
@@ -57,11 +63,13 @@ const LoginPage: React.FC<LoginPageProps> = ({ userType }) => {
         }
         
         // Supabase Auth SignUp
+        console.log('🔄 Calling signUpCustomer...');
         const result = await supabaseApi.auth.signUpCustomer(email, password, {
           firstName,
           lastName,
           phone,
         });
+        console.log('✅ SignUp result:', result);
         
         // Email confirmation mesajı göster
         setError('');
@@ -73,6 +81,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ userType }) => {
         
       } else if (mode === 'login' && isCustomer) {
         // ✅ MÜŞTERİ GİRİŞİ - Supabase Auth ile
+        console.log('🔑 Login mode - Customer');
+        
         if (!email || !password) {
           setError('Lütfen email ve şifrenizi girin');
           setLoading(false);
@@ -80,7 +90,9 @@ const LoginPage: React.FC<LoginPageProps> = ({ userType }) => {
         }
         
         // Supabase Auth SignIn
+        console.log('🔄 Calling signIn...');
         const { user, session } = await supabaseApi.auth.signIn(email, password);
+        console.log('✅ SignIn result:', { user: user?.id, session: !!session });
         
         if (!user) {
           setError('Giriş başarısız');
@@ -89,7 +101,9 @@ const LoginPage: React.FC<LoginPageProps> = ({ userType }) => {
         }
 
         // Customer bilgilerini DB'den çek
+        console.log('🔄 Getting customer data...');
         const customerData = await supabaseApi.customers.getById(user.id);
+        console.log('✅ Customer data:', customerData);
         
         if (!customerData) {
           setError('Müşteri bilgileri bulunamadı');
@@ -98,10 +112,12 @@ const LoginPage: React.FC<LoginPageProps> = ({ userType }) => {
         }
         
         // Profile'a yönlendir
+        console.log('🚀 Navigating to profile...');
         navigate('/musteri/profil');
         
       } else {
         // Partner girişi (eski mantık korundu)
+        console.log('🔑 Login mode - Partner');
         const partnerData = { id: '1', email: phone, name: 'Test Partner', phone: phone };
         localStorage.setItem('yolmov_partner', JSON.stringify(partnerData));
         navigate('/partner');
@@ -110,6 +126,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ userType }) => {
       console.error('❌ Submit error:', err);
       setError(err.message || 'İşlem başarısız!');
     } finally {
+      console.log('🏁 handleSubmit finished');
       setLoading(false);
     }
   };
@@ -238,7 +255,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ userType }) => {
           )}
 
           {/* Form Fields */}
-          <form className="space-y-5 max-w-sm mx-auto w-full" onSubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
+          <form className="space-y-5 max-w-sm mx-auto w-full" onSubmit={handleSubmit}>
             <AnimatePresence mode="wait">
               <motion.div
                 key={mode}
