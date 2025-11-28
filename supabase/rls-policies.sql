@@ -26,6 +26,11 @@ ALTER TABLE system_logs ENABLE ROW LEVEL SECURITY;
 -- 1. CUSTOMERS POLICIES
 -- ============================================
 
+-- Yeni kayıt olan kullanıcılar kendi customer kaydını oluşturabilsin
+CREATE POLICY "Users can insert their own customer record"
+ON customers FOR INSERT
+WITH CHECK (auth.uid()::text = id::text);
+
 -- Müşteriler sadece kendi bilgilerini görebilir
 CREATE POLICY "Customers can view their own data"
 ON customers FOR SELECT
