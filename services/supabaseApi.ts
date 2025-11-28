@@ -11,7 +11,7 @@
  * - Auth ile kullanıcı kimlik doğrulama
  */
 
-import { supabase } from './supabase';
+import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from './supabase';
 import type {
   Customer,
   AdminUser,
@@ -206,8 +206,8 @@ export const authApi = {
     try {
       console.log('🔐 signIn started for:', email);
       
-      const authUrl = `https://uwslxmciglqxpvfbgjzm.supabase.co/auth/v1/token?grant_type=password`;
-      const apiKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV3c2x4bWNpZ2xxeHB2ZmJnanptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzMxNDk4MzgsImV4cCI6MjA0ODcyNTgzOH0.BPiYgGz9iMevhBzrTEjyb6GQ6qmhHLHXwWxQ0g7g9eI';
+      const authUrl = `${SUPABASE_URL}/auth/v1/token?grant_type=password`;
+      const apiKey = SUPABASE_ANON_KEY;
       
       console.log('🔐 Using RAW FETCH to Supabase auth...');
       const startTime = Date.now();
@@ -216,7 +216,8 @@ export const authApi = {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'apikey': apiKey
+          'apikey': apiKey,
+          'Authorization': `Bearer ${apiKey}`
         },
         body: JSON.stringify({ email, password })
       });
@@ -263,7 +264,7 @@ export const authApi = {
       // Customer kaydını kontrol et
       console.log('🔐 Checking customer record...');
       const customerResponse = await fetch(
-        `https://uwslxmciglqxpvfbgjzm.supabase.co/rest/v1/customers?id=eq.${authData.user.id}&select=id`,
+        `${SUPABASE_URL}/rest/v1/customers?id=eq.${authData.user.id}&select=id`,
         {
           headers: {
             'apikey': apiKey,
@@ -296,8 +297,8 @@ export const authApi = {
    */
   signOut: async () => {
     try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
+      // Manual sign out: clear local session
+      localStorage.removeItem('yolmov-auth-session');
     } catch (error) {
       handleError(error, 'Sign Out');
     }

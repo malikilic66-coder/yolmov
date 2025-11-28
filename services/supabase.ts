@@ -7,14 +7,18 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables');
 }
 
+// Export config for use in raw fetch flows
+export const SUPABASE_URL = supabaseUrl;
+export const SUPABASE_ANON_KEY = supabaseAnonKey;
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    autoRefreshToken: false,      // ❌ Manuel yöneteceğiz
-    persistSession: false,         // ❌ Storage'a yazmayı devre dışı bırak (HANG FIX)
-    detectSessionInUrl: false,     // ❌ URL'den session okumayı kapat
-    storage: undefined,            // ❌ Storage API kullanma
-    storageKey: 'yolmov-auth',
-    flowType: 'pkce'               // ✅ Güvenli flow
+    // Disable SDK-managed session persistence to avoid storage hang
+    autoRefreshToken: false,
+    persistSession: false,
+    detectSessionInUrl: false,
+    storage: undefined,
+    flowType: 'pkce'
   },
   realtime: {
     params: {
@@ -26,7 +30,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       'X-Client-Info': 'yolmov-web'
     }
   }
-});
 
 // Helper types for database
 export type Tables<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Row'];
