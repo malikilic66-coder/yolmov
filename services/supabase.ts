@@ -30,6 +30,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       'X-Client-Info': 'yolmov-web'
     }
   }
+});
 
 // Helper types for database
 export type Tables<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Row'];
