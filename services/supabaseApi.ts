@@ -200,139 +200,91 @@ export const authApi = {
 
   /**
    * Giriş yap - Email + Password
+   * RAW FETCH KULLANIMI - Supabase SDK storage problemi yüzünden
    */
   signIn: async (email: string, password: string) => {
     try {
       console.log('🔐 signIn started for:', email);
-      console.log('🔐 Supabase client configured:', {
-        url: supabase.supabaseUrl,
-        hasAuth: !!supabase.auth
+      
+      const authUrl = `https://uwslxmciglqxpvfbgjzm.supabase.co/auth/v1/token?grant_type=password`;
+      const apiKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV3c2x4bWNpZ2xxeHB2ZmJnanptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzMxNDk4MzgsImV4cCI6MjA0ODcyNTgzOH0.BPiYgGz9iMevhBzrTEjyb6GQ6qmhHLHXwWxQ0g7g9eI';
+      
+      console.log('🔐 Using RAW FETCH to Supabase auth...');
+      const startTime = Date.now();
+      
+      const response = await fetch(authUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': apiKey
+        },
+        body: JSON.stringify({ email, password })
       });
       
-      // 🔍 TEST 1: Raw fetch ile direkt endpoint test
-      console.log('🧪 TEST: Raw fetch to Supabase auth endpoint...');
-      const testUrl = `${supabase.supabaseUrl}/auth/v1/token?grant_type=password`;
-      console.log('🧪 Test URL:', testUrl);
+      const duration = Date.now() - startTime;
+      console.log('🔐 Auth response received in', `${duration}ms`);
       
-      const testStartTime = Date.now();
-      try {
-        const rawResponse = await fetch(testUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': (supabase as any).supabaseKey || ''
-          },
-          body: JSON.stringify({ email, password })
-        });
-        const testDuration = Date.now() - testStartTime;
-        console.log('🧪 Raw fetch RESPONSE:', {
-          status: rawResponse.status,
-          ok: rawResponse.ok,
-          duration: `${testDuration}ms`,
-          headers: Object.fromEntries(rawResponse.headers.entries())
-        });
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('🔐 Auth failed:', errorData);
         
-        if (rawResponse.ok) {
-          const responseData = await rawResponse.json();
-          console.log('🧪 Raw fetch SUCCESS:', { 
-            hasAccessToken: !!responseData.access_token,
-            hasUser: !!responseData.user 
-          });
-        } else {
-          const errorData = await rawResponse.text();
-          console.error('🧪 Raw fetch FAILED:', errorData);
-        }
-      } catch (rawError: any) {
-        console.error('🧪 Raw fetch ERROR:', {
-          message: rawError.message,
-          name: rawError.name,
-          stack: rawError.stack
-        });
-      }
-      
-      // 🔍 TEST 2: Supabase SDK signInWithPassword
-      console.log('🔐 Calling supabase.auth.signInWithPassword...');
-      const sdkStartTime = Date.now();
-      
-      // Timeout wrapper
-      const timeoutPromise = new Promise((_, reject) => {
-        const timeoutId = setTimeout(() => {
-          console.error('⏱️ TIMEOUT TRIGGERED after 15 seconds');
-          reject(new Error('Giriş işlemi zaman aşımına uğradı. Lütfen internet bağlantınızı kontrol edin.'));
-        }, 15000);
-        
-        // Debug: Log every second to see if function is hanging
-        let secondsPassed = 0;
-        const intervalId = setInterval(() => {
-          secondsPassed++;
-          console.log(`⏳ Waiting... ${secondsPassed}s`);
-          if (secondsPassed >= 15) {
-            clearInterval(intervalId);
-          }
-        }, 1000);
-        
-        return () => {
-          clearTimeout(timeoutId);
-          clearInterval(intervalId);
-        };
-      });
-
-      const signInPromise = supabase.auth.signInWithPassword({
-        email,
-        password,
-      }).then(result => {
-        const sdkDuration = Date.now() - sdkStartTime;
-        console.log('🔐 signInWithPassword RESOLVED after', `${sdkDuration}ms`);
-        return result;
-      });
-
-      console.log('🔐 Starting Promise.race...');
-      const { data, error } = await Promise.race([signInPromise, timeoutPromise]) as any;
-
-      console.log('🔐 Promise.race completed');
-      console.log('🔐 signInWithPassword response:', { 
-        hasData: !!data, 
-        hasError: !!error,
-        userData: data?.user ? { id: data.user.id, email: data.user.email } : null
-      });
-
-      if (error) {
-        console.error('🔐 signInWithPassword error:', error);
-        // Türkçe hata mesajları
-        if (error.message.includes('Invalid login credentials')) {
+        if (errorData.error_description?.includes('Invalid login credentials')) {
           throw new Error('Email veya şifre hatalı');
         }
-        if (error.message.includes('Email not confirmed')) {
+        if (errorData.error_description?.includes('Email not confirmed')) {
           throw new Error('Email adresinizi doğrulamanız gerekiyor. Lütfen mail kutunuzu kontrol edin.');
         }
-        throw error;
+        throw new Error(errorData.error_description || 'Giriş başarısız');
       }
-
-      if (!data.user) {
-        console.error('🔐 No user in response');
-        throw new Error('Giriş başarısız');
+      
+      const authData = await response.json();
+      console.log('🔐 Auth successful:', {
+        hasAccessToken: !!authData.access_token,
+        hasUser: !!authData.user,
+        userId: authData.user?.id
+      });
+      
+      if (!authData.user) {
+        throw new Error('Kullanıcı bilgisi alınamadı');
       }
-
-      console.log('🔐 User authenticated:', data.user.id);
-
-      // Customer kaydının olup olmadığını kontrol et
+      
+      // Session'ı manuel olarak localStorage'a kaydet
+      const session = {
+        access_token: authData.access_token,
+        refresh_token: authData.refresh_token,
+        expires_in: authData.expires_in,
+        expires_at: authData.expires_at,
+        user: authData.user
+      };
+      
+      localStorage.setItem('yolmov-auth-session', JSON.stringify(session));
+      console.log('💾 Session saved to localStorage');
+      
+      // Customer kaydını kontrol et
       console.log('🔐 Checking customer record...');
-      const { data: customerCheck, error: customerError } = await supabase
-        .from('customers')
-        .select('id')
-        .eq('id', data.user.id)
-        .single();
-
-      console.log('🔐 Customer check result:', { hasCustomer: !!customerCheck, error: customerError });
-
-      if (!customerCheck) {
-        // Auth user var ama customer kaydı yok - kayıt tamamlanmamış
-        console.error('❌ Customer record not found for user:', data.user.id);
-        throw new Error('Kayıt işleminiz tamamlanmamış. Lütfen tekrar kayıt olmayı deneyin veya destek ile iletişime geçin.');
+      const customerResponse = await fetch(
+        `https://uwslxmciglqxpvfbgjzm.supabase.co/rest/v1/customers?id=eq.${authData.user.id}&select=id`,
+        {
+          headers: {
+            'apikey': apiKey,
+            'Authorization': `Bearer ${authData.access_token}`
+          }
+        }
+      );
+      
+      const customers = await customerResponse.json();
+      console.log('🔐 Customer check result:', { count: customers?.length });
+      
+      if (!customers || customers.length === 0) {
+        console.error('❌ Customer record not found');
+        throw new Error('Kayıt işleminiz tamamlanmamış. Lütfen tekrar kayıt olmayı deneyin.');
       }
-
+      
       console.log('✅ signIn successful');
-      return { user: data.user, session: data.session };
+      return { 
+        user: authData.user, 
+        session: session
+      };
     } catch (error: any) {
       console.error('❌ Sign In Error:', error);
       throw error;
@@ -366,12 +318,22 @@ export const authApi = {
   },
 
   /**
-   * Mevcut session'ı getir
+   * Mevcut session'ı getir - Manuel localStorage okuma
    */
   getSession: async () => {
     try {
-      const { data: { session }, error } = await supabase.auth.getSession();
-      if (error) throw error;
+      const sessionStr = localStorage.getItem('yolmov-auth-session');
+      if (!sessionStr) return null;
+      
+      const session = JSON.parse(sessionStr);
+      
+      // Token süresi dolmuş mu kontrol et
+      if (session.expires_at && new Date(session.expires_at * 1000) < new Date()) {
+        console.log('⏰ Session expired, clearing...');
+        localStorage.removeItem('yolmov-auth-session');
+        return null;
+      }
+      
       return session;
     } catch (error) {
       console.error('❌ Get Session Error:', error);
@@ -380,10 +342,32 @@ export const authApi = {
   },
 
   /**
-   * Session state değişikliklerini dinle
+   * Session state değişikliklerini dinle - Manuel storage event
    */
   onAuthStateChange: (callback: (event: string, session: any) => void) => {
-    return supabase.auth.onAuthStateChange(callback);
+    const handleStorageChange = async (e: StorageEvent) => {
+      if (e.key === 'yolmov-auth-session') {
+        const sessionStr = e.newValue;
+        if (sessionStr) {
+          const session = JSON.parse(sessionStr);
+          callback('SIGNED_IN', session);
+        } else {
+          callback('SIGNED_OUT', null);
+        }
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    
+    return {
+      data: {
+        subscription: {
+          unsubscribe: () => {
+            window.removeEventListener('storage', handleStorageChange);
+          }
+        }
+      }
+    };
   },
 
   /**

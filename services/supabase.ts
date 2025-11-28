@@ -9,13 +9,21 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: true
+    autoRefreshToken: false,      // ❌ Manuel yöneteceğiz
+    persistSession: false,         // ❌ Storage'a yazmayı devre dışı bırak (HANG FIX)
+    detectSessionInUrl: false,     // ❌ URL'den session okumayı kapat
+    storage: undefined,            // ❌ Storage API kullanma
+    storageKey: 'yolmov-auth',
+    flowType: 'pkce'               // ✅ Güvenli flow
   },
   realtime: {
     params: {
       eventsPerSecond: 10
+    }
+  },
+  global: {
+    headers: {
+      'X-Client-Info': 'yolmov-web'
     }
   }
 });

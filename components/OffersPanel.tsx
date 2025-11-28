@@ -35,14 +35,20 @@ const OffersPanel: React.FC = () => {
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [sessionLoading, setSessionLoading] = useState(true);
 
-  // Supabase session kontrolü
+  // Manuel session kontrolü - localStorage
   useEffect(() => {
     const checkSession = async () => {
       try {
-        const session = await supabaseApi.auth.getSession();
-        if (session?.user) {
-          const customerData = await supabaseApi.customers.getById(session.user.id);
-          setCustomer(customerData);
+        // localStorage'dan session oku
+        const sessionStr = localStorage.getItem('yolmov-auth-session');
+        if (sessionStr) {
+          const session = JSON.parse(sessionStr);
+          if (session?.user?.id) {
+            const customerData = await supabaseApi.customers.getById(session.user.id);
+            setCustomer(customerData);
+          } else {
+            navigate('/giris/musteri');
+          }
         } else {
           // Session yok - giriş sayfasına yönlendir
           navigate('/giris/musteri');

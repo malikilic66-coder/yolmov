@@ -18,20 +18,15 @@ const Header: React.FC<HeaderProps> = () => {
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Supabase session kontrolü - sadece bir kez çalışır
+  // Manuel session kontrolü - localStorage'dan oku
   useEffect(() => {
     let isMounted = true;
-    let currentUserId: string | null = null;
     
     const loadCustomer = async (userId: string) => {
-      // Aynı kullanıcı için tekrar yükleme yapma
-      if (userId === currentUserId) return;
-      
       try {
         const customerData = await supabaseApi.customers.getById(userId);
         if (isMounted && customerData) {
           setCustomer(customerData);
-          currentUserId = userId;
         }
       } catch (error) {
         console.error('Customer yükleme hatası:', error);
@@ -40,9 +35,13 @@ const Header: React.FC<HeaderProps> = () => {
 
     const checkSession = async () => {
       try {
-        const session = await supabaseApi.auth.getSession();
-        if (session?.user) {
-          await loadCustomer(session.user.id);
+        // Manuel session okuma - localStorage'dan
+        const sessionStr = localStorage.getItem('yolmov-auth-session');
+        if (sessionStr) {
+          const session = JSON.parse(sessionStr);
+          if (session?.user?.id) {
+            await loadCustomer(session.user.id);
+          }
         } else {
           if (isMounted) setCustomer(null);
         }
@@ -56,31 +55,29 @@ const Header: React.FC<HeaderProps> = () => {
 
     checkSession();
 
-    // Auth state değişikliklerini dinle
-    const { data: { subscription } } = supabaseApi.auth.onAuthStateChange(async (event, session) => {
-      if (!isMounted) return;
-      
-      // Sadece gerçek değişiklikleri işle
-      if (event === 'SIGNED_IN' && session?.user) {
-        // Zaten aynı kullanıcı yüklüyse tekrar yükleme
-        if (session.user.id !== currentUserId) {
-          await loadCustomer(session.user.id);
-        }
-      } else if (event === 'SIGNED_OUT') {
-        setCustomer(null);
-        currentUserId = null;
+    // Storage event'lerini dinle (başka tab'da login/logout)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'yolmov-auth-session') {
+        checkSession();
       }
-    });
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+
+    // Her 5 saniyede bir kontrol et (polling)
+    const intervalId = setInterval(checkSession, 5000);
 
     return () => {
       isMounted = false;
-      subscription.unsubscribe();
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(intervalId);
     };
   }, []); // Boş dependency array - sadece mount'ta çalışır
 
   const handleLogout = async () => {
     try {
-      await supabaseApi.auth.signOut();
+      // Manuel logout - localStorage'dan sil
+      localStorage.removeItem('yolmov-auth-session');
       setCustomer(null);
       setIsProfileMenuOpen(false);
       navigate('/');
