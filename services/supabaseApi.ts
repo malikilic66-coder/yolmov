@@ -323,10 +323,10 @@ export const customersApi = {
         firstName: data.first_name,
         lastName: data.last_name,
         phone: data.phone,
-        email: data.email,
-        avatarUrl: data.avatar_url,
-        city: data.city,
-        district: data.district,
+        email: data.email || undefined,
+        avatarUrl: data.avatar_url || undefined,
+        city: data.city || undefined,
+        district: data.district || undefined,
         createdAt: data.created_at,
       };
     } catch (error) {

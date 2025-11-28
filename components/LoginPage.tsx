@@ -50,9 +50,9 @@ const LoginPage: React.FC<LoginPageProps> = ({ userType }) => {
           lastName,
           email,
           phone: phone || '',
-          avatarUrl: null,
-          city: null,
-          district: null
+          avatarUrl: undefined,
+          city: undefined,
+          district: undefined
         });
         
         localStorage.setItem('yolmov_customer', JSON.stringify(newCustomer));

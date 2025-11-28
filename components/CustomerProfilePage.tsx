@@ -41,36 +41,61 @@ const CustomerProfilePage: React.FC = () => {
   const loadCustomerData = async () => {
     try {
       setLoading(true);
-      const customerId = localStorage.getItem('yolmov_customer_id');
       
-      if (!customerId) {
+      // localStorage'dan customer objesini al
+      const customerStr = localStorage.getItem('yolmov_customer');
+      
+      if (!customerStr) {
         navigate('/giris/musteri');
         return;
       }
 
-      // Customer bilgilerini çek
-      const customerData = await supabaseApi.customers.getById(customerId);
-      if (customerData) {
-        setCustomer(customerData);
-        setForm(customerData);
+      const storedCustomer = JSON.parse(customerStr);
+      
+      // Eğer ID varsa veritabanından güncel veriyi çek
+      if (storedCustomer.id) {
+        try {
+          const customerData = await supabaseApi.customers.getById(storedCustomer.id);
+          if (customerData) {
+            setCustomer(customerData);
+            setForm(customerData);
+          } else {
+            // DB'de yoksa localStorage'daki veriyi kullan
+            setCustomer(storedCustomer);
+            setForm(storedCustomer);
+          }
+        } catch {
+          // API hatası - localStorage verisini kullan
+          setCustomer(storedCustomer);
+          setForm(storedCustomer);
+        }
+      } else {
+        // ID yoksa localStorage verisini kullan
+        setCustomer(storedCustomer);
+        setForm(storedCustomer);
       }
 
-      // Müşterinin request geçmişini çek
-      const requestHistory = await supabaseApi.requests.getByCustomerId(customerId);
-      if (requestHistory) {
-        // Request'leri MOCK_ORDERS formatına dönüştür
-        const formattedOrders = requestHistory.map((req: any) => ({
-          id: req.id,
-          service: req.service_type,
-          provider: 'Partner',
-          date: new Date(req.created_at).toLocaleString('tr-TR'),
-          status: req.status === 'completed' ? 'Tamamlandı' : req.status === 'cancelled' ? 'İptal' : 'Devam Ediyor',
-          amount: req.estimated_price || 0,
-          from: `${req.from_district}, ${req.from_city}`,
-          to: req.to_city ? `${req.to_district}, ${req.to_city}` : null,
-          rating: null
-        }));
-        setOrders(formattedOrders);
+      // Request geçmişini çekmeyi dene (hata olursa boş bırak)
+      if (storedCustomer.id) {
+        try {
+          const requestHistory = await supabaseApi.requests.getByCustomerId(storedCustomer.id);
+          if (requestHistory && requestHistory.length > 0) {
+            const formattedOrders = requestHistory.map((req: any) => ({
+              id: req.id,
+              service: req.serviceType || req.service_type || 'Çekici',
+              provider: req.assignedPartnerName || 'Partner',
+              date: new Date(req.createdAt || req.created_at).toLocaleString('tr-TR'),
+              status: req.status === 'completed' ? 'Tamamlandı' : req.status === 'cancelled' ? 'İptal' : 'Devam Ediyor',
+              amount: req.amount || 0,
+              from: req.fromLocation || 'Bilinmiyor',
+              to: req.toLocation || null,
+              rating: null
+            }));
+            setOrders(formattedOrders);
+          }
+        } catch {
+          // Request geçmişi alınamadı - boş bırak
+        }
       }
     } catch (error) {
       console.error('❌ Müşteri bilgileri yüklenemedi:', error);
@@ -183,6 +208,35 @@ const CustomerProfilePage: React.FC = () => {
     </button>
   );
 
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-[calc(100vh-80px)] bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-brand-orange border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-500">Yükleniyor...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // No customer - redirect handled in useEffect but show fallback
+  if (!customer) {
+    return (
+      <div className="min-h-[calc(100vh-80px)] bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-500 mb-4">Oturum bulunamadı</p>
+          <button 
+            onClick={() => navigate('/giris/musteri')}
+            className="px-6 py-3 bg-brand-orange text-white rounded-xl font-bold"
+          >
+            Giriş Yap
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-[calc(100vh-80px)] bg-gray-50 py-8 px-4 md:px-8">
       <div className="max-w-6xl mx-auto">
@@ -195,16 +249,16 @@ const CustomerProfilePage: React.FC = () => {
                   {customer.avatarUrl ? (
                     <img src={customer.avatarUrl} alt="Avatar" className="w-full h-full rounded-full object-cover" />
                   ) : (
-                    customer.firstName.charAt(0)
+                    (customer.firstName || 'U').charAt(0)
                   )}
                   <div className="absolute bottom-0 right-0 bg-white rounded-full p-1 shadow border border-gray-100">
                     <ShieldCheck size={18} className="text-brand-orange" />
                   </div>
                 </div>
-                <h2 className="mt-4 text-xl font-bold text-gray-900">{customer.firstName} {customer.lastName}</h2>
+                <h2 className="mt-4 text-xl font-bold text-gray-900">{customer.firstName || ''} {customer.lastName || ''}</h2>
                 <p className="text-xs text-gray-400 uppercase tracking-wider font-bold mt-1">Yolmov Üyesi</p>
                 <div className="mt-4 space-y-2 w-full text-left">
-                  <div className="flex items-center gap-2 text-sm text-gray-600"><Phone size={14} className="text-brand-orange" /> {customer.phone}</div>
+                  <div className="flex items-center gap-2 text-sm text-gray-600"><Phone size={14} className="text-brand-orange" /> {customer.phone || '-'}</div>
                   {customer.email && (
                     <div className="flex items-center gap-2 text-sm text-gray-600 truncate"><Mail size={14} className="text-brand-orange" /> <span className="truncate">{customer.email}</span></div>
                   )}
