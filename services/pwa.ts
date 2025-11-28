@@ -4,20 +4,39 @@
 // Service Worker Registration
 export function registerServiceWorker() {
   if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker
-        .register('/sw.js')
-        .then((registration) => {
-          console.log('✅ Service Worker registered successfully:', registration.scope);
-          
-          // Check for updates periodically
-          setInterval(() => {
-            registration.update();
-          }, 60 * 60 * 1000); // Check every hour
-        })
-        .catch((error) => {
-          console.error('❌ Service Worker registration failed:', error);
+    window.addEventListener('load', async () => {
+      try {
+        // Unregister old service workers first
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (const registration of registrations) {
+          await registration.unregister();
+          console.log('🗑️ Old Service Worker unregistered');
+        }
+
+        // Clear all caches
+        const cacheNames = await caches.keys();
+        for (const cacheName of cacheNames) {
+          await caches.delete(cacheName);
+          console.log('🗑️ Cache deleted:', cacheName);
+        }
+
+        // Register new service worker
+        const registration = await navigator.serviceWorker.register('/sw.js', {
+          updateViaCache: 'none' // Always fetch fresh sw.js
         });
+        
+        console.log('✅ Service Worker registered successfully:', registration.scope);
+        
+        // Force update on first load
+        await registration.update();
+        
+        // Check for updates periodically
+        setInterval(() => {
+          registration.update();
+        }, 60 * 60 * 1000); // Check every hour
+      } catch (error) {
+        console.error('❌ Service Worker registration failed:', error);
+      }
     });
   }
 }

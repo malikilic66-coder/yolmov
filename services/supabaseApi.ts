@@ -203,12 +203,24 @@ export const authApi = {
    */
   signIn: async (email: string, password: string) => {
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      console.log('🔐 signIn started for:', email);
+      
+      // Timeout wrapper
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Giriş işlemi zaman aşımına uğradı. Lütfen internet bağlantınızı kontrol edin.')), 15000)
+      );
+
+      const signInPromise = supabase.auth.signInWithPassword({
         email,
         password,
       });
 
+      const { data, error } = await Promise.race([signInPromise, timeoutPromise]) as any;
+
+      console.log('🔐 signInWithPassword response:', { hasData: !!data, hasError: !!error });
+
       if (error) {
+        console.error('🔐 signInWithPassword error:', error);
         // Türkçe hata mesajları
         if (error.message.includes('Invalid login credentials')) {
           throw new Error('Email veya şifre hatalı');
@@ -219,14 +231,22 @@ export const authApi = {
         throw error;
       }
 
-      if (!data.user) throw new Error('Giriş başarısız');
+      if (!data.user) {
+        console.error('🔐 No user in response');
+        throw new Error('Giriş başarısız');
+      }
+
+      console.log('🔐 User authenticated:', data.user.id);
 
       // Customer kaydının olup olmadığını kontrol et
-      const { data: customerCheck } = await supabase
+      console.log('🔐 Checking customer record...');
+      const { data: customerCheck, error: customerError } = await supabase
         .from('customers')
         .select('id')
         .eq('id', data.user.id)
         .single();
+
+      console.log('🔐 Customer check result:', { hasCustomer: !!customerCheck, error: customerError });
 
       if (!customerCheck) {
         // Auth user var ama customer kaydı yok - kayıt tamamlanmamış
@@ -234,6 +254,7 @@ export const authApi = {
         throw new Error('Kayıt işleminiz tamamlanmamış. Lütfen tekrar kayıt olmayı deneyin veya destek ile iletişime geçin.');
       }
 
+      console.log('✅ signIn successful');
       return { user: data.user, session: data.session };
     } catch (error: any) {
       console.error('❌ Sign In Error:', error);
