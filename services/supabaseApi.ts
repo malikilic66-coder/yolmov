@@ -1585,7 +1585,7 @@ export const analyticsApi = {
 // EXPORT ALL APIs
 // ============================================
 
-export default {
+const supabaseApi = {
   auth: authApi,
   customers: customersApi,
   partners: partnersApi,
@@ -1603,3 +1603,6 @@ export default {
   realtime: realtimeApi,
   analytics: analyticsApi,
 };
+
+export { supabaseApi };
+export default supabaseApi;
