@@ -1,7 +1,17 @@
 // Service Worker for YOLMOV PWA
-const CACHE_VERSION = 'v1.0.1';
+const CACHE_VERSION = 'v1.0.2';
 const CACHE_NAME = `yolmov-cache-${CACHE_VERSION}`;
 const OFFLINE_URL = '/offline.html';
+
+// URLs that should NEVER be cached (always fetch from network)
+const NO_CACHE_PATTERNS = [
+  'supabase.co',          // Supabase API - auth, database, etc.
+  '/auth/',               // Auth endpoints
+  '/rest/v1/',            // REST API endpoints
+  '/realtime/',           // Realtime WebSocket
+  'googleapis.com',       // Google APIs
+  '/api/'                 // Any API endpoints
+];
 
 // Assets to cache immediately on install
 // Note: External CDN URLs should NOT be cached here (CORS issues)
@@ -46,18 +56,36 @@ self.addEventListener('activate', (event) => {
 
 // Fetch event - serve from cache, fallback to network
 self.addEventListener('fetch', (event) => {
+  const url = event.request.url;
+  
   // Skip non-GET requests
   if (event.request.method !== 'GET') return;
 
   // Skip chrome extensions
-  if (event.request.url.startsWith('chrome-extension://')) return;
+  if (url.startsWith('chrome-extension://')) return;
+
+  // NEVER cache API requests - always go to network
+  const shouldSkipCache = NO_CACHE_PATTERNS.some(pattern => url.includes(pattern));
+  
+  if (shouldSkipCache) {
+    // Network only for API requests
+    event.respondWith(
+      fetch(event.request).catch(() => {
+        return new Response(JSON.stringify({ error: 'Network unavailable' }), {
+          status: 503,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      })
+    );
+    return;
+  }
 
   event.respondWith(
     caches.match(event.request)
       .then((cachedResponse) => {
         // Return cached response if found
         if (cachedResponse) {
-          console.log('[Service Worker] Serving from cache:', event.request.url);
+          console.log('[Service Worker] Serving from cache:', url);
           return cachedResponse;
         }
 
