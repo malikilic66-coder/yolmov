@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Customer, Request, Offer } from '../types';
 import supabaseApi from '../services/supabaseApi';
@@ -31,25 +31,32 @@ const offerStatusBadge = (status: Offer['status']) => {
 const OffersPanel: React.FC = () => {
   const navigate = useNavigate();
   
-  // Get customer from localStorage
-  const customer = useMemo(() => {
-    const stored = localStorage.getItem('yolmov_customer');
-    if (stored) {
-      try {
-        return JSON.parse(stored) as Customer;
-      } catch (e) {
-        console.error('Failed to parse customer data:', e);
-      }
-    }
-    return null;
-  }, []);
+  // Supabase session'dan customer al
+  const [customer, setCustomer] = useState<Customer | null>(null);
+  const [sessionLoading, setSessionLoading] = useState(true);
 
-  // Redirect if not logged in
-  React.useEffect(() => {
-    if (!customer) {
-      navigate('/giris/musteri');
-    }
-  }, [customer, navigate]);
+  // Supabase session kontrolü
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const session = await supabaseApi.auth.getSession();
+        if (session?.user) {
+          const customerData = await supabaseApi.customers.getById(session.user.id);
+          setCustomer(customerData);
+        } else {
+          // Session yok - giriş sayfasına yönlendir
+          navigate('/giris/musteri');
+        }
+      } catch (error) {
+        console.error('Session kontrol hatası:', error);
+        navigate('/giris/musteri');
+      } finally {
+        setSessionLoading(false);
+      }
+    };
+    
+    checkSession();
+  }, [navigate]);
 
   const [requests, setRequests] = useState<Request[]>([]);
   const [selectedRequest, setSelectedRequest] = useState<Request | null>(null);
@@ -229,6 +236,35 @@ const OffersPanel: React.FC = () => {
     }
   };
 
+  // Loading state
+  if (sessionLoading) {
+    return (
+      <div className="min-h-[calc(100vh-80px)] bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-brand-orange border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-500">Yükleniyor...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Not logged in state (fallback)
+  if (!customer) {
+    return (
+      <div className="min-h-[calc(100vh-80px)] bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-500 mb-4">Oturum bulunamadı</p>
+          <button 
+            onClick={() => navigate('/giris/musteri')}
+            className="px-6 py-3 bg-brand-orange text-white rounded-xl font-bold"
+          >
+            Giriş Yap
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-[calc(100vh-80px)] bg-gray-50 py-8 px-4 md:px-8">
       <div className="max-w-6xl mx-auto">
@@ -243,7 +279,12 @@ const OffersPanel: React.FC = () => {
             <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-bold text-gray-800">Taleplerim</h2>
-                <button onClick={() => setRequests(getRequestsByCustomer(customer.id))} className="text-xs font-bold flex items-center gap-1 text-gray-500 hover:text-brand-orange"><RefreshCcw size={14}/> Yenile</button>
+                <button onClick={async () => {
+                  if (customer) {
+                    const updatedRequests = await supabaseApi.requests.getByCustomerId(customer.id);
+                    setRequests(updatedRequests);
+                  }
+                }} className="text-xs font-bold flex items-center gap-1 text-gray-500 hover:text-brand-orange"><RefreshCcw size={14}/> Yenile</button>
               </div>
               {requests.length === 0 && (
                 <div className="text-center py-12">

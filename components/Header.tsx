@@ -4,6 +4,7 @@ import { Menu, X, Briefcase } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import NotificationCenter from './shared/NotificationCenter';
 import { Customer } from '../types';
+import supabaseApi from '../services/supabaseApi';
 
 interface HeaderProps {
   // Remove callback props - using useNavigate instead
@@ -14,37 +15,69 @@ const Header: React.FC<HeaderProps> = () => {
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const [customer, setCustomer] = useState<Customer | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Get customer from localStorage
-  const [customer, setCustomer] = useState<Customer | null>(() => {
-    const saved = localStorage.getItem('yolmov_customer');
-    return saved ? JSON.parse(saved) : null;
-  });
-
-  // Re-check localStorage on route change (login redirect will trigger this)
+  // Supabase session kontrolü
   useEffect(() => {
-    const saved = localStorage.getItem('yolmov_customer');
-    const parsed = saved ? JSON.parse(saved) : null;
-    setCustomer(parsed);
-  }, [location.pathname]);
-
-  // Listen for storage changes (from other tabs or login)
-  useEffect(() => {
-    const handleStorageChange = () => {
-      const saved = localStorage.getItem('yolmov_customer');
-      const parsed = saved ? JSON.parse(saved) : null;
-      setCustomer(parsed);
+    const checkSession = async () => {
+      try {
+        const session = await supabaseApi.auth.getSession();
+        if (session?.user) {
+          // Customer bilgilerini DB'den çek
+          const customerData = await supabaseApi.customers.getById(session.user.id);
+          setCustomer(customerData);
+        } else {
+          setCustomer(null);
+        }
+      } catch (error) {
+        console.error('Session kontrol hatası:', error);
+        setCustomer(null);
+      } finally {
+        setLoading(false);
+      }
     };
 
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
+    checkSession();
+
+    // Auth state değişikliklerini dinle
+    const { data: { subscription } } = supabaseApi.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth event:', event);
+      if (event === 'SIGNED_IN' && session?.user) {
+        const customerData = await supabaseApi.customers.getById(session.user.id);
+        setCustomer(customerData);
+      } else if (event === 'SIGNED_OUT') {
+        setCustomer(null);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
-  const handleLogout = () => {
-    localStorage.removeItem('yolmov_customer');
-    setCustomer(null);
-    setIsProfileMenuOpen(false);
-    navigate('/');
+  // Route değişikliğinde de kontrol et (backup)
+  useEffect(() => {
+    const recheckSession = async () => {
+      const session = await supabaseApi.auth.getSession();
+      if (session?.user) {
+        const customerData = await supabaseApi.customers.getById(session.user.id);
+        setCustomer(customerData);
+      }
+    };
+    recheckSession();
+  }, [location.pathname]);
+
+  const handleLogout = async () => {
+    try {
+      await supabaseApi.auth.signOut();
+      setCustomer(null);
+      setIsProfileMenuOpen(false);
+      navigate('/');
+    } catch (error) {
+      console.error('Çıkış hatası:', error);
+      navigate('/');
+    }
   };
 
   const toggleMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);

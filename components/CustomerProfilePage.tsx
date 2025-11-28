@@ -9,6 +9,26 @@ import {
 } from 'lucide-react';
 import { CITIES_WITH_DISTRICTS } from '../constants';
 
+// Toast Notification Component
+const Toast: React.FC<{ message: string; type: 'success' | 'error'; onClose: () => void }> = ({ message, type, onClose }) => {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 4000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  return (
+    <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-4 rounded-xl shadow-xl border ${
+      type === 'success' 
+        ? 'bg-green-50 border-green-200 text-green-800' 
+        : 'bg-red-50 border-red-200 text-red-800'
+    } animate-slide-up`}>
+      {type === 'success' ? <CheckCircle2 size={20} /> : <AlertCircle size={20} />}
+      <span className="font-medium text-sm">{message}</span>
+      <button onClick={onClose} className="ml-2 hover:opacity-70"><X size={16} /></button>
+    </div>
+  );
+};
+
 // Mock Data for Extended Features - ORDERS artık state'ten geliyor
 const MOCK_ORDERS_TEMPLATE = [
   { id: 'REQ-4521', service: 'Çekici Hizmeti', provider: 'Kurtarma Ekibi A.Ş.', date: '18 Kas 2025 14:35', status: 'Tamamlandı', amount: 850, from: 'Kadıköy, İstanbul', to: 'Maltepe Servis', rating: 5 }
@@ -32,6 +52,13 @@ const CustomerProfilePage: React.FC = () => {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<Customer>({} as Customer);
   const [orders, setOrders] = useState<typeof MOCK_ORDERS>([]);
+  
+  // Toast notification state
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  
+  const showToast = (message: string, type: 'success' | 'error') => {
+    setToast({ message, type });
+  };
 
   // Load customer data from Supabase
   useEffect(() => {
@@ -134,10 +161,10 @@ const CustomerProfilePage: React.FC = () => {
       await supabaseApi.customers.update(customer.id, form);
       setCustomer(form);
       setIsEditing(false);
-      alert('✅ Profil bilgileriniz güncellendi!');
+      showToast('Profil bilgileriniz güncellendi!', 'success');
     } catch (error) {
       console.error('❌ Profil güncellenemedi:', error);
-      alert('Profil güncellenirken hata oluştu. Lütfen tekrar deneyin.');
+      showToast('Profil güncellenirken hata oluştu. Lütfen tekrar deneyin.', 'error');
     }
   };
 
@@ -161,14 +188,14 @@ const CustomerProfilePage: React.FC = () => {
 
   const handlePasswordChange = () => {
     if (passwordForm.new !== passwordForm.confirm) {
-      alert('Yeni şifreler eşleşmiyor!');
+      showToast('Yeni şifreler eşleşmiyor!', 'error');
       return;
     }
     if (passwordForm.new.length < 6) {
-      alert('Şifre en az 6 karakter olmalıdır.');
+      showToast('Şifre en az 6 karakter olmalıdır.', 'error');
       return;
     }
-    alert('Şifreniz başarıyla değiştirildi!');
+    showToast('Şifreniz başarıyla değiştirildi!', 'success');
     setShowChangePassword(false);
     setPasswordForm({ current: '', new: '', confirm: '' });
   };
@@ -179,10 +206,10 @@ const CustomerProfilePage: React.FC = () => {
 
   const handleAddAddress = () => {
     if (!addressForm.label || !addressForm.address || !addressForm.city || !addressForm.district) {
-      alert('Lütfen tüm alanları doldurun!');
+      showToast('Lütfen tüm alanları doldurun!', 'error');
       return;
     }
-    alert('Adres başarıyla eklendi!');
+    showToast('Adres başarıyla eklendi!', 'success');
     setShowAddAddress(false);
     setAddressForm({ label: '', type: 'home', address: '', city: '', district: '' });
   };
@@ -811,6 +838,26 @@ const CustomerProfilePage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Toast Notification */}
+      {toast && (
+        <Toast 
+          message={toast.message} 
+          type={toast.type} 
+          onClose={() => setToast(null)} 
+        />
+      )}
+
+      {/* Animation keyframes */}
+      <style>{`
+        @keyframes slide-up {
+          from { transform: translateY(100%); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
+        }
+        .animate-slide-up {
+          animation: slide-up 0.3s ease-out;
+        }
+      `}</style>
     </div>
   );
 };
