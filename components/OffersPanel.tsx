@@ -222,7 +222,11 @@ const OffersPanel: React.FC = () => {
       
       alert('Değerlendirmeniz için teşekkürler!');
       setShowRatingModal(false);
-    setRequestToRate(null);
+      setRequestToRate(null);
+    } catch (error) {
+      console.error('Rating error:', error);
+      alert('Değerlendirme kaydedilemedi.');
+    }
   };
 
   return (
