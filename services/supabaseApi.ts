@@ -204,20 +204,97 @@ export const authApi = {
   signIn: async (email: string, password: string) => {
     try {
       console.log('🔐 signIn started for:', email);
+      console.log('🔐 Supabase client configured:', {
+        url: supabase.supabaseUrl,
+        hasAuth: !!supabase.auth
+      });
+      
+      // 🔍 TEST 1: Raw fetch ile direkt endpoint test
+      console.log('🧪 TEST: Raw fetch to Supabase auth endpoint...');
+      const testUrl = `${supabase.supabaseUrl}/auth/v1/token?grant_type=password`;
+      console.log('🧪 Test URL:', testUrl);
+      
+      const testStartTime = Date.now();
+      try {
+        const rawResponse = await fetch(testUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': (supabase as any).supabaseKey || ''
+          },
+          body: JSON.stringify({ email, password })
+        });
+        const testDuration = Date.now() - testStartTime;
+        console.log('🧪 Raw fetch RESPONSE:', {
+          status: rawResponse.status,
+          ok: rawResponse.ok,
+          duration: `${testDuration}ms`,
+          headers: Object.fromEntries(rawResponse.headers.entries())
+        });
+        
+        if (rawResponse.ok) {
+          const responseData = await rawResponse.json();
+          console.log('🧪 Raw fetch SUCCESS:', { 
+            hasAccessToken: !!responseData.access_token,
+            hasUser: !!responseData.user 
+          });
+        } else {
+          const errorData = await rawResponse.text();
+          console.error('🧪 Raw fetch FAILED:', errorData);
+        }
+      } catch (rawError: any) {
+        console.error('🧪 Raw fetch ERROR:', {
+          message: rawError.message,
+          name: rawError.name,
+          stack: rawError.stack
+        });
+      }
+      
+      // 🔍 TEST 2: Supabase SDK signInWithPassword
+      console.log('🔐 Calling supabase.auth.signInWithPassword...');
+      const sdkStartTime = Date.now();
       
       // Timeout wrapper
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Giriş işlemi zaman aşımına uğradı. Lütfen internet bağlantınızı kontrol edin.')), 15000)
-      );
+      const timeoutPromise = new Promise((_, reject) => {
+        const timeoutId = setTimeout(() => {
+          console.error('⏱️ TIMEOUT TRIGGERED after 15 seconds');
+          reject(new Error('Giriş işlemi zaman aşımına uğradı. Lütfen internet bağlantınızı kontrol edin.'));
+        }, 15000);
+        
+        // Debug: Log every second to see if function is hanging
+        let secondsPassed = 0;
+        const intervalId = setInterval(() => {
+          secondsPassed++;
+          console.log(`⏳ Waiting... ${secondsPassed}s`);
+          if (secondsPassed >= 15) {
+            clearInterval(intervalId);
+          }
+        }, 1000);
+        
+        return () => {
+          clearTimeout(timeoutId);
+          clearInterval(intervalId);
+        };
+      });
 
       const signInPromise = supabase.auth.signInWithPassword({
         email,
         password,
+      }).then(result => {
+        const sdkDuration = Date.now() - sdkStartTime;
+        console.log('🔐 signInWithPassword RESOLVED after', `${sdkDuration}ms`);
+        return result;
       });
 
+      console.log('🔐 Starting Promise.race...');
       const { data, error } = await Promise.race([signInPromise, timeoutPromise]) as any;
 
-      console.log('🔐 signInWithPassword response:', { hasData: !!data, hasError: !!error });
+      console.log('🔐 Promise.race completed');
+      console.log('🔐 signInWithPassword response:', { 
+        hasData: !!data, 
+        hasError: !!error,
+        userData: data?.user ? { id: data.user.id, email: data.user.email } : null
+      });
 
       if (error) {
         console.error('🔐 signInWithPassword error:', error);
