@@ -29,6 +29,10 @@ const LS_KEYS = {
   routes: 'yolmov_routes',
   reviews: 'yolmov_reviews',
   jobs: 'yolmov_jobs',
+  users: 'yolmov_users',
+  partners: 'yolmov_partners',
+  leadRequests: 'yolmov_lead_requests',
+  areaRequests: 'yolmov_area_requests',
   initialized: 'yolmov_initialized'
 };
 
@@ -47,6 +51,76 @@ function save<T>(key: string, data: T[]) {
 
 function genId(prefix: string) {
   return prefix + '-' + Math.random().toString(36).slice(2, 9);
+}
+
+// ============================================
+// USERS & PARTNERS (Admin View)
+// ============================================
+
+export interface User {
+  id: string; name: string; email: string;
+  type: 'customer' | 'partner'; status: 'active' | 'suspended'; joinDate: string;
+  totalSpent?: number; totalEarned?: number;
+}
+
+export interface Partner {
+  id: string; name: string; email: string; phone: string; rating: number;
+  completedJobs: number; credits: number; status: 'active' | 'pending' | 'suspended';
+}
+
+export function getAllUsers(): User[] {
+  return load<User>(LS_KEYS.users);
+}
+
+export function getAllPartners(): Partner[] {
+  return load<Partner>(LS_KEYS.partners);
+}
+
+// ============================================
+// PARTNER REQUESTS (Lead & Area)
+// ============================================
+
+export interface PartnerLeadRequest {
+  id: string;
+  partnerId: string;
+  partnerName: string;
+  requestType: 'lead_purchase';
+  serviceArea: string;
+  serviceType: string;
+  creditCost: number;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: string;
+  resolvedAt?: string;
+  resolvedBy?: string;
+  adminNotes?: string;
+  customerInfo?: {
+    name: string;
+    phone: string;
+    location: string;
+  };
+}
+
+export interface ServiceAreaRequest {
+  id: string;
+  partnerId: string;
+  partnerName: string;
+  requestType: 'area_expansion';
+  currentAreas: string[];
+  requestedAreas: string[];
+  reason: string;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: string;
+  resolvedAt?: string;
+  resolvedBy?: string;
+  adminNotes?: string;
+}
+
+export function getAllLeadRequests(): PartnerLeadRequest[] {
+  return load<PartnerLeadRequest>(LS_KEYS.leadRequests);
+}
+
+export function getAllAreaRequests(): ServiceAreaRequest[] {
+  return load<ServiceAreaRequest>(LS_KEYS.areaRequests);
 }
 
 // REQUESTS
@@ -602,6 +676,74 @@ function formatDateForAdmin(isoDate: string): string {
 export function initializeMockData(): void {
   if (localStorage.getItem(LS_KEYS.initialized)) return;
   
+  // Users
+  const users: User[] = [
+    { id: 'USR-001', name: 'Ahmet Yılmaz', email: 'ahmet@example.com', type: 'customer', status: 'active', joinDate: '2023-10-15', totalSpent: 2400 },
+    { id: 'USR-002', name: 'Selin Kaya', email: 'selin@example.com', type: 'customer', status: 'active', joinDate: '2023-11-01', totalSpent: 800 },
+    { id: 'PTR-001', name: 'Yılmaz Oto Kurtarma', email: 'yilmaz@partner.com', type: 'partner', status: 'active', joinDate: '2023-09-10', totalEarned: 15600 },
+    { id: 'PTR-002', name: 'Hızlı Yol Yardım', email: 'hizli@partner.com', type: 'partner', status: 'active', joinDate: '2023-08-20', totalEarned: 28900 },
+  ];
+  save(LS_KEYS.users, users);
+
+  // Partners
+  const partners: Partner[] = [
+    { id: 'PTR-001', name: 'Yılmaz Oto Kurtarma', email: 'yilmaz@partner.com', phone: '0532 XXX XX 01', rating: 4.9, completedJobs: 128, credits: 25, status: 'active' },
+    { id: 'PTR-002', name: 'Hızlı Yol Yardım', email: 'hizli@partner.com', phone: '0533 XXX XX 02', rating: 4.7, completedJobs: 203, credits: 50, status: 'active' },
+    { id: 'PTR-003', name: 'Mega Çekici', email: 'mega@partner.com', phone: '0534 XXX XX 03', rating: 4.5, completedJobs: 89, credits: 10, status: 'pending' },
+  ];
+  save(LS_KEYS.partners, partners);
+
+  // Lead Requests
+  const leadRequests: PartnerLeadRequest[] = [
+    {
+      id: 'LREQ-001',
+      partnerId: 'PTR-001',
+      partnerName: 'Yılmaz Oto Kurtarma',
+      requestType: 'lead_purchase',
+      serviceArea: 'Kadıköy, İstanbul',
+      serviceType: 'cekici',
+      creditCost: 1,
+      status: 'approved',
+      createdAt: '2024-11-26 14:30',
+      resolvedAt: '2024-11-26 15:00',
+      resolvedBy: 'Admin User',
+      adminNotes: 'Onaylandı, 1 kredi düşüldü',
+      customerInfo: {
+        name: 'Mehmet Demir',
+        phone: '0532 111 22 33',
+        location: 'Kadıköy Moda Caddesi, İstanbul'
+      }
+    },
+    {
+      id: 'LREQ-002',
+      partnerId: 'PTR-002',
+      partnerName: 'Hızlı Yol Yardım',
+      requestType: 'lead_purchase',
+      serviceArea: 'Beşiktaş, İstanbul',
+      serviceType: 'aku',
+      creditCost: 1,
+      status: 'pending',
+      createdAt: '2024-11-27 09:15',
+    }
+  ];
+  save(LS_KEYS.leadRequests, leadRequests);
+
+  // Area Requests
+  const areaRequests: ServiceAreaRequest[] = [
+    {
+      id: 'AREQ-001',
+      partnerId: 'PTR-002',
+      partnerName: 'Hızlı Yol Yardım',
+      requestType: 'area_expansion',
+      currentAreas: ['Çankaya, Ankara', 'Keçiören, Ankara'],
+      requestedAreas: ['Mamak, Ankara', 'Etimesgut, Ankara'],
+      reason: 'Filomuz bu bölgelere yeterli. 2 yeni araç ekledik.',
+      status: 'pending',
+      createdAt: '2024-11-26 11:00',
+    }
+  ];
+  save(LS_KEYS.areaRequests, areaRequests);
+
   // Partner Credits
   const credits: PartnerCredit[] = [
     { partnerId: 'PTR-001', partnerName: 'Yılmaz Oto Kurtarma', balance: 25, totalPurchased: 100, totalUsed: 75, lastTransaction: '2024-11-22T15:30:00Z' },

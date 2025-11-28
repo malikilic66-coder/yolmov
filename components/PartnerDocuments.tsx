@@ -3,27 +3,10 @@
  * Partnerin belgelerini yükleme ve onay durumu takibi
  */
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { FileText, Upload, CheckCircle, XCircle, Clock, Eye, Download, Trash2, AlertTriangle, Loader2 } from 'lucide-react';
 import { compressImage, isImageFile } from '../utils/imageCompression';
-
-interface Document {
-  id: string;
-  type: 'license' | 'insurance' | 'registration' | 'tax' | 'identity';
-  name: string;
-  uploadDate: string;
-  status: 'approved' | 'pending' | 'rejected';
-  rejectionReason?: string;
-  expiryDate?: string;
-  fileSize?: string;
-}
-
-const MOCK_DOCUMENTS: Document[] = [
-  { id: 'DOC-1', type: 'license', name: 'Sürücü Belgesi.pdf', uploadDate: '2023-11-01', status: 'approved', expiryDate: '2028-05-15', fileSize: '1.2 MB' },
-  { id: 'DOC-2', type: 'insurance', name: 'Kasko Poliçesi.pdf', uploadDate: '2023-11-02', status: 'approved', expiryDate: '2024-12-31', fileSize: '800 KB' },
-  { id: 'DOC-3', type: 'registration', name: 'Ruhsat.pdf', uploadDate: '2023-11-03', status: 'pending', fileSize: '650 KB' },
-  { id: 'DOC-4', type: 'tax', name: 'Vergi Levhası.pdf', uploadDate: '2023-11-05', status: 'rejected', rejectionReason: 'Belge okunaklı değil, lütfen yeniden yükleyin', fileSize: '400 KB' },
-];
+import { uploadDocument, getDocumentsByPartner, PartnerDocument } from '../services/mockApi';
 
 const DOCUMENT_TYPES = [
   { value: 'license', label: 'Sürücü Belgesi', required: true },
@@ -34,14 +17,28 @@ const DOCUMENT_TYPES = [
 ];
 
 export const PartnerDocuments: React.FC = () => {
-  const [documents, setDocuments] = useState<Document[]>(MOCK_DOCUMENTS);
+  const [documents, setDocuments] = useState<PartnerDocument[]>([]);
   const [selectedType, setSelectedType] = useState('');
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [viewingDocument, setViewingDocument] = useState<Document | null>(null);
+  const [viewingDocument, setViewingDocument] = useState<PartnerDocument | null>(null);
+  
+  // Mock current partner ID
+  const currentPartnerId = 'PTR-001';
+  const currentPartnerName = 'Yılmaz Oto Kurtarma';
 
-  const getStatusBadge = (status: Document['status']) => {
+  useEffect(() => {
+    loadDocuments();
+  }, []);
+
+  const loadDocuments = () => {
+    const docs = getDocumentsByPartner(currentPartnerId);
+    setDocuments(docs);
+  };
+
+
+  const getStatusBadge = (status: PartnerDocument['status']) => {
     const config = {
       approved: { bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200', icon: CheckCircle, label: 'Onaylandı' },
       pending: { bg: 'bg-yellow-50', text: 'text-yellow-700', border: 'border-yellow-200', icon: Clock, label: 'İnceleniyor' },
@@ -83,15 +80,15 @@ export const PartnerDocuments: React.FC = () => {
       
       // Simüle upload
       setTimeout(() => {
-        const newDoc: Document = {
-          id: `DOC-${Date.now()}`,
+        const newDoc = uploadDocument({
+          partnerId: currentPartnerId,
+          partnerName: currentPartnerName,
           type: selectedType as any,
-          name: finalFile.name,
-          uploadDate: new Date().toISOString().split('T')[0],
-          status: 'pending',
+          fileName: finalFile.name,
           fileSize: `${(finalFile.size / 1024 / 1024).toFixed(1)} MB`,
-        };
-        setDocuments([...documents, newDoc]);
+        });
+        
+        setDocuments(prev => [...prev, newDoc]);
         setUploading(false);
         setSelectedType('');
         // Aynı dosyanın tekrar seçilip yüklenebilmesi için input değerini sıfırla

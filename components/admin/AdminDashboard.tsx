@@ -10,7 +10,22 @@ import { useAdminFilter } from './hooks/useAdminFilter';
 import StatusBadge from './ui/StatusBadge';
 import EmptyState from './ui/EmptyState';
 import LoadingSkeleton from './ui/LoadingSkeleton';
-import { getCustomerRequestsForAdmin, initializeMockData } from '../../services/mockApi';
+import { 
+  getCustomerRequestsForAdmin, 
+  initializeMockData,
+  getAllUsers,
+  getAllPartners,
+  getAllLeadRequests,
+  getAllAreaRequests,
+  getAllTickets,
+  getAllOffers,
+  getAllReviews,
+  getAllVehicles,
+  User,
+  Partner,
+  PartnerLeadRequest,
+  ServiceAreaRequest
+} from '../../services/mockApi';
 
 const AdminOffersTab = lazy(() => import('./tabs/AdminOffersTab'));
 const AdminReportsTab = lazy(() => import('./tabs/AdminReportsTab'));
@@ -25,53 +40,6 @@ const AdminRequestsTab = lazy(() => import('./tabs/AdminRequestsTab'));
 const AdminCustomerRequestsTab = lazy(() => import('./tabs/AdminCustomerRequestsTab'));
 
 import type { Vehicle } from './tabs/AdminFleetTab';
-
-interface User {
-  id: string; name: string; email: string;
-  type: 'customer' | 'partner'; status: 'active' | 'suspended'; joinDate: string;
-  totalSpent?: number; totalEarned?: number;
-}
-interface Partner {
-  id: string; name: string; email: string; phone: string; rating: number;
-  completedJobs: number; credits: number; status: 'active' | 'pending' | 'suspended';
-}
-
-// Partner lead satın alma talebi (B2B)
-interface PartnerLeadRequest {
-  id: string;
-  partnerId: string;
-  partnerName: string;
-  requestType: 'lead_purchase';
-  serviceArea: string; // "Kadıköy, İstanbul"
-  serviceType: string; // "cekici", "aku" vb
-  creditCost: number; // 1 kredi
-  status: 'pending' | 'approved' | 'rejected';
-  createdAt: string;
-  resolvedAt?: string;
-  resolvedBy?: string; // Admin user
-  adminNotes?: string;
-  customerInfo?: { // Onay sonrası görünür
-    name: string;
-    phone: string;
-    location: string;
-  };
-}
-
-// Partner hizmet alanı genişletme talebi
-interface ServiceAreaRequest {
-  id: string;
-  partnerId: string;
-  partnerName: string;
-  requestType: 'area_expansion';
-  currentAreas: string[]; // ["Kadıköy", "Maltepe"]
-  requestedAreas: string[]; // ["Beşiktaş", "Şişli"]
-  reason: string; // Partner açıklaması
-  status: 'pending' | 'approved' | 'rejected';
-  createdAt: string;
-  resolvedAt?: string;
-  resolvedBy?: string;
-  adminNotes?: string;
-}
 
 // Partner destek/yardım talebi
 interface PartnerSupportRequest {
@@ -95,181 +63,8 @@ interface OfferLog {
   status: 'sent' | 'accepted' | 'rejected'; createdAt: string;
 }
 
-const MOCK_USERS: User[] = [
-  { id: 'USR-001', name: 'Ahmet Yılmaz', email: 'ahmet@example.com', type: 'customer', status: 'active', joinDate: '2023-10-15', totalSpent: 2400 },
-  { id: 'USR-002', name: 'Selin Kaya', email: 'selin@example.com', type: 'customer', status: 'active', joinDate: '2023-11-01', totalSpent: 800 },
-  { id: 'PTR-001', name: 'Yılmaz Oto Kurtarma', email: 'yilmaz@partner.com', type: 'partner', status: 'active', joinDate: '2023-09-10', totalEarned: 15600 },
-  { id: 'PTR-002', name: 'Hızlı Yol Yardım', email: 'hizli@partner.com', type: 'partner', status: 'active', joinDate: '2023-08-20', totalEarned: 28900 },
-];
-const MOCK_PARTNERS: Partner[] = [
-  { id: 'PTR-001', name: 'Yılmaz Oto Kurtarma', email: 'yilmaz@partner.com', phone: '0532 XXX XX 01', rating: 4.9, completedJobs: 128, credits: 25, status: 'active' },
-  { id: 'PTR-002', name: 'Hızlı Yol Yardım', email: 'hizli@partner.com', phone: '0533 XXX XX 02', rating: 4.7, completedJobs: 203, credits: 50, status: 'active' },
-  { id: 'PTR-003', name: 'Mega Çekici', email: 'mega@partner.com', phone: '0534 XXX XX 03', rating: 4.5, completedJobs: 89, credits: 10, status: 'pending' },
-];
 
-// Partner lead satın alma talepleri
-const MOCK_LEAD_REQUESTS: PartnerLeadRequest[] = [
-  {
-    id: 'LREQ-001',
-    partnerId: 'PTR-001',
-    partnerName: 'Yılmaz Oto Kurtarma',
-    requestType: 'lead_purchase',
-    serviceArea: 'Kadıköy, İstanbul',
-    serviceType: 'cekici',
-    creditCost: 1,
-    status: 'approved',
-    createdAt: '2024-11-26 14:30',
-    resolvedAt: '2024-11-26 15:00',
-    resolvedBy: 'Admin User',
-    adminNotes: 'Onaylandı, 1 kredi düşüldü',
-    customerInfo: {
-      name: 'Mehmet Demir',
-      phone: '0532 111 22 33',
-      location: 'Kadıköy Moda Caddesi, İstanbul'
-    }
-  },
-  {
-    id: 'LREQ-002',
-    partnerId: 'PTR-002',
-    partnerName: 'Hızlı Yol Yardım',
-    requestType: 'lead_purchase',
-    serviceArea: 'Beşiktaş, İstanbul',
-    serviceType: 'aku',
-    creditCost: 1,
-    status: 'pending',
-    createdAt: '2024-11-27 09:15',
-  },
-  {
-    id: 'LREQ-003',
-    partnerId: 'PTR-003',
-    partnerName: 'Mega Çekici',
-    requestType: 'lead_purchase',
-    serviceArea: 'Bornova, İzmir',
-    serviceType: 'lastik',
-    creditCost: 1,
-    status: 'pending',
-    createdAt: '2024-11-27 10:30',
-  },
-  {
-    id: 'LREQ-004',
-    partnerId: 'PTR-001',
-    partnerName: 'Yılmaz Oto Kurtarma',
-    requestType: 'lead_purchase',
-    serviceArea: 'Maltepe, İstanbul',
-    serviceType: 'yakit',
-    creditCost: 1,
-    status: 'rejected',
-    createdAt: '2024-11-25 16:20',
-    resolvedAt: '2024-11-25 17:00',
-    resolvedBy: 'Admin User',
-    adminNotes: 'Yetersiz kredi bakiyesi'
-  },
-];
-
-// Partner hizmet alanı genişletme talepleri
-const MOCK_AREA_REQUESTS: ServiceAreaRequest[] = [
-  {
-    id: 'AREQ-001',
-    partnerId: 'PTR-002',
-    partnerName: 'Hızlı Yol Yardım',
-    requestType: 'area_expansion',
-    currentAreas: ['Çankaya, Ankara', 'Keçiören, Ankara'],
-    requestedAreas: ['Mamak, Ankara', 'Etimesgut, Ankara'],
-    reason: 'Filomuz bu bölgelere yeterli. 2 yeni araç ekledik.',
-    status: 'pending',
-    createdAt: '2024-11-26 11:00',
-  },
-  {
-    id: 'AREQ-002',
-    partnerId: 'PTR-001',
-    partnerName: 'Yılmaz Oto Kurtarma',
-    requestType: 'area_expansion',
-    currentAreas: ['Kadıköy, İstanbul', 'Maltepe, İstanbul'],
-    requestedAreas: ['Beşiktaş, İstanbul', 'Şişli, İstanbul'],
-    reason: 'Avrupa yakasında da hizmet vermek istiyoruz.',
-    status: 'approved',
-    createdAt: '2024-11-24 14:20',
-    resolvedAt: '2024-11-25 09:00',
-    resolvedBy: 'Admin User',
-    adminNotes: 'Filo kapasitesi yeterli, onaylandı.'
-  },
-  {
-    id: 'AREQ-003',
-    partnerId: 'PTR-003',
-    partnerName: 'Mega Çekici',
-    requestType: 'area_expansion',
-    currentAreas: ['Bornova, İzmir'],
-    requestedAreas: ['Karşıyaka, İzmir', 'Konak, İzmir', 'Çiğli, İzmir'],
-    reason: 'İzmir genelinde hizmet kapsamını genişletmek istiyoruz.',
-    status: 'rejected',
-    createdAt: '2024-11-20 16:45',
-    resolvedAt: '2024-11-21 10:00',
-    resolvedBy: 'Admin User',
-    adminNotes: 'Filo kapasitesi yetersiz. En az 2 araç daha eklemeniz gerekiyor.'
-  },
-];
-
-// Partner destek talepleri
-const MOCK_SUPPORT_REQUESTS: PartnerSupportRequest[] = [
-  {
-    id: 'SREQ-001',
-    partnerId: 'PTR-003',
-    partnerName: 'Mega Çekici',
-    requestType: 'billing',
-    priority: 'high',
-    subject: 'Ödeme sistemi sorunu',
-    description: 'Son 3 gündür ödeme çekme işlemi gerçekleştiremiyorum. Bakiye görünüyor ama çekim yapamıyorum.',
-    status: 'in_progress',
-    createdAt: '2024-11-27 08:30',
-    updatedAt: '2024-11-27 09:00',
-    assignedTo: 'Admin User',
-  },
-  {
-    id: 'SREQ-002',
-    partnerId: 'PTR-001',
-    partnerName: 'Yılmaz Oto Kurtarma',
-    requestType: 'technical',
-    priority: 'medium',
-    subject: 'Mobil uygulama GPS sorunu',
-    description: 'Mobil uygulamada konum paylaşımı zaman zaman kopuyor.',
-    status: 'resolved',
-    createdAt: '2024-11-25 14:15',
-    updatedAt: '2024-11-26 10:00',
-    assignedTo: 'Tech Support',
-    resolution: 'GPS izinleri yeniden ayarlandı. Uygulama güncellemesi yayınlandı.'
-  },
-  {
-    id: 'SREQ-003',
-    partnerId: 'PTR-002',
-    partnerName: 'Hızlı Yol Yardım',
-    requestType: 'feature',
-    priority: 'low',
-    subject: 'Toplu SMS gönderme özelliği',
-    description: 'Müşterilere kampanya duyurusu için toplu SMS gönderebilir miyiz?',
-    status: 'open',
-    createdAt: '2024-11-26 16:00',
-    updatedAt: '2024-11-26 16:00',
-  },
-  {
-    id: 'SREQ-004',
-    partnerId: 'PTR-001',
-    partnerName: 'Yılmaz Oto Kurtarma',
-    requestType: 'support',
-    priority: 'urgent',
-    subject: 'Hesap askıya alındı',
-    description: 'Hesabım neden askıya alındı? Acil çözüm gerekiyor, işlerimiz durdu.',
-    status: 'resolved',
-    createdAt: '2024-11-24 10:00',
-    updatedAt: '2024-11-24 12:30',
-    assignedTo: 'Admin User',
-    resolution: 'Doğrulama eksikliği. Belgeler tamamlandı, hesap aktif edildi.'
-  },
-];
-const MOCK_OFFERS: OfferLog[] = [
-  { id: 'OFF-001', partnerId: 'PTR-001', partnerName: 'Yılmaz Oto', requestId: 'REQ-001', price: 850, status: 'accepted', createdAt: '2023-11-22 14:35' },
-  { id: 'OFF-002', partnerId: 'PTR-002', partnerName: 'Hızlı Yol', requestId: 'REQ-002', price: 400, status: 'accepted', createdAt: '2023-11-23 09:20' },
-  { id: 'OFF-003', partnerId: 'PTR-001', partnerName: 'Yılmaz Oto', requestId: 'REQ-003', price: 600, status: 'sent', createdAt: '2023-11-24 11:05' },
-];
+import { SupportTicket, Offer } from '../../types';
 
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -283,25 +78,36 @@ const AdminDashboard: React.FC = () => {
   const [showAddUserModal, setShowAddUserModal] = useState(false);
   const currentAdminRole: AdminRole = AdminRole.SUPER_ADMIN;
   
+  // State for dynamic data
+  const [users, setUsers] = useState<User[]>([]);
+  const [partners, setPartners] = useState<Partner[]>([]);
+  const [leadRequests, setLeadRequests] = useState<PartnerLeadRequest[]>([]);
+  const [areaRequests, setAreaRequests] = useState<ServiceAreaRequest[]>([]);
+  const [supportRequests, setSupportRequests] = useState<SupportTicket[]>([]);
+  const [offers, setOffers] = useState<Offer[]>([]);
+  
   // mockApi'den müşteri taleplerini çek
   const [customerRequests, setCustomerRequests] = useState<CustomerRequestLog[]>([]);
   
   // Component mount olduğunda ve tab değiştiğinde verileri yükle
   useEffect(() => {
     initializeMockData();
-    loadCustomerRequests();
+    loadAllData();
   }, []);
   
   // Tab değiştiğinde verileri yenile
   useEffect(() => {
-    if (activeTab === 'overview' || activeTab === 'customer-requests') {
-      loadCustomerRequests();
-    }
+    loadAllData();
   }, [activeTab]);
   
-  const loadCustomerRequests = () => {
-    const requests = getCustomerRequestsForAdmin();
-    setCustomerRequests(requests);
+  const loadAllData = () => {
+    setCustomerRequests(getCustomerRequestsForAdmin());
+    setUsers(getAllUsers());
+    setPartners(getAllPartners());
+    setLeadRequests(getAllLeadRequests());
+    setAreaRequests(getAllAreaRequests());
+    setSupportRequests(getAllTickets());
+    setOffers(getAllOffers());
   };
 
   // URL'ye göre aktif tab'ı ayarla
@@ -376,23 +182,23 @@ const AdminDashboard: React.FC = () => {
     navigate(newUrl);
   };
 
-  const filteredUsers = userTypeFilter === 'all' ? MOCK_USERS : MOCK_USERS.filter(u => u.type === userTypeFilter);
+  const filteredUsers = userTypeFilter === 'all' ? users : users.filter(u => u.type === userTypeFilter);
   const usersFilter = useAdminFilter(filteredUsers, { searchKeys: ['name','email'] });
-  const partnersFilter = useAdminFilter(MOCK_PARTNERS, { searchKeys: ['name','email'], statusKey: 'status' });
+  const partnersFilter = useAdminFilter(partners, { searchKeys: ['name','email'], statusKey: 'status' });
 
   const stats = {
-    totalUsers: MOCK_USERS.filter(u => u.type === 'customer').length,
-    totalPartners: MOCK_PARTNERS.length,
+    totalUsers: users.filter(u => u.type === 'customer').length,
+    totalPartners: partners.length,
     // Partner talep istatistikleri
-    pendingLeadRequests: MOCK_LEAD_REQUESTS.filter(r => r.status === 'pending').length,
-    pendingAreaRequests: MOCK_AREA_REQUESTS.filter(r => r.status === 'pending').length,
-    openSupportRequests: MOCK_SUPPORT_REQUESTS.filter(r => r.status === 'open' || r.status === 'in_progress').length,
+    pendingLeadRequests: leadRequests.filter(r => r.status === 'pending').length,
+    pendingAreaRequests: areaRequests.filter(r => r.status === 'pending').length,
+    openSupportRequests: supportRequests.filter(r => r.status === 'open' || r.status === 'in_progress').length,
     // Müşteri talep istatistikleri - mockApi'den dinamik veri
     activeCustomerRequests: customerRequests.filter(r => r.status === 'open').length,
     completedCustomerRequests: customerRequests.filter(r => r.status === 'completed').length,
     totalRevenue: customerRequests.filter(r => r.amount).reduce((sum, r) => sum + (r.amount || 0), 0),
-    b2cUsers: MOCK_USERS.filter(u => u.type === 'customer').length,
-    b2bUsers: MOCK_USERS.filter(u => u.type === 'partner').length,
+    b2cUsers: users.filter(u => u.type === 'customer').length,
+    b2bUsers: users.filter(u => u.type === 'partner').length,
   };
 
   return (
@@ -684,9 +490,9 @@ const AdminDashboard: React.FC = () => {
               ) : (
                 <Suspense fallback={<LoadingSkeleton rows={6} />}>
                   <AdminRequestsTab 
-                    leadRequests={MOCK_LEAD_REQUESTS}
-                    areaRequests={MOCK_AREA_REQUESTS}
-                    supportRequests={MOCK_SUPPORT_REQUESTS}
+                    leadRequests={leadRequests}
+                    areaRequests={areaRequests}
+                    supportRequests={supportRequests}
                   />
                 </Suspense>
               )}
@@ -717,7 +523,7 @@ const AdminDashboard: React.FC = () => {
                 />
               ) : (
                 <Suspense fallback={<LoadingSkeleton rows={6} />}>
-                  <AdminOffersTab data={MOCK_OFFERS} onViewOffer={(offer) => navigate(`/admin/teklifler/${offer.id}`)} />
+                  <AdminOffersTab data={offers} onViewOffer={(offer) => navigate(`/admin/teklifler/${offer.id}`)} />
                 </Suspense>
               )}
             </div>
@@ -847,7 +653,8 @@ const LeadRequestDetailPanel: React.FC<LeadRequestDetailPanelProps> = ({ request
   const [requestState, setRequestState] = React.useState<any>(null);
 
   React.useEffect(() => {
-    const request = MOCK_LEAD_REQUESTS.find(r => r.id === requestId);
+    const allRequests = getAllLeadRequests();
+    const request = allRequests.find(r => r.id === requestId);
     setRequestState(request || null);
   }, [requestId]);
 
@@ -979,7 +786,8 @@ const AreaRequestDetailPanel: React.FC<LeadRequestDetailPanelProps> = ({ request
   const [requestState, setRequestState] = React.useState<any>(null);
 
   React.useEffect(() => {
-    const request = MOCK_AREA_REQUESTS.find(r => r.id === requestId);
+    const allRequests = getAllAreaRequests();
+    const request = allRequests.find(r => r.id === requestId);
     setRequestState(request || null);
   }, [requestId]);
 
@@ -1119,7 +927,8 @@ const SupportRequestDetailPanel: React.FC<LeadRequestDetailPanelProps> = ({ requ
   const [requestState, setRequestState] = React.useState<any>(null);
 
   React.useEffect(() => {
-    const request = MOCK_SUPPORT_REQUESTS.find(r => r.id === requestId);
+    const allRequests = getAllTickets();
+    const request = allRequests.find(r => r.id === requestId);
     setRequestState(request || null);
   }, [requestId]);
 
@@ -1264,7 +1073,8 @@ const OfferDetailPanel: React.FC<OfferDetailPanelProps> = ({ offerId, onBack }) 
   const [offerState, setOfferState] = React.useState<any>(null);
 
   React.useEffect(() => {
-    const offer = MOCK_OFFERS.find(o => o.id === offerId);
+    const allOffers = getAllOffers();
+    const offer = allOffers.find(o => o.id === offerId);
     setOfferState(offer || null);
   }, [offerId]);
 
@@ -1383,27 +1193,11 @@ interface VehicleDetailPanelProps {
 }
 
 const VehicleDetailPanel: React.FC<VehicleDetailPanelProps> = ({ vehicleId, onBack }) => {
-  const MOCK_VEHICLES: any[] = [
-    {
-      id: 'VEH-001',
-      partnerId: 'PTR-001',
-      partnerName: 'Yılmaz Oto Kurtarma',
-      plate: '34 AB 1234',
-      model: '2020 Ford F-Max',
-      type: 'Kayar Kasa',
-      driver: 'Mehmet Yıldız',
-      status: 'active',
-      registrationDate: '2023-09-10',
-      lastService: '2024-10-15',
-      totalJobs: 128,
-      totalEarnings: 45600,
-    },
-  ];
-
   const [vehicleState, setVehicleState] = React.useState<any>(null);
 
   React.useEffect(() => {
-    const vehicle = MOCK_VEHICLES.find(v => v.id === vehicleId);
+    const allVehicles = getAllVehicles();
+    const vehicle = allVehicles.find(v => v.id === vehicleId);
     setVehicleState(vehicle || null);
   }, [vehicleId]);
 
@@ -1536,25 +1330,11 @@ interface ReviewDetailPanelProps {
 }
 
 const ReviewDetailPanel: React.FC<ReviewDetailPanelProps> = ({ reviewId, onBack }) => {
-  const MOCK_REVIEWS_DATA: any[] = [
-    {
-      id: 'REV-001',
-      jobId: 'JOB-4923',
-      partnerId: 'PTR-001',
-      partnerName: 'Yılmaz Oto Kurtarma',
-      customerName: 'Ahmet Yılmaz',
-      service: 'Çekici Hizmeti',
-      date: '2024-11-22 15:30',
-      rating: 5,
-      comment: 'Çok hızlı geldi, işini profesyonelce yaptı. Teşekkürler!',
-      tags: ['Kibar Müşteri', 'Sorunsuz Ödeme'],
-    },
-  ];
-
   const [reviewState, setReviewState] = React.useState<any>(null);
 
   React.useEffect(() => {
-    const review = MOCK_REVIEWS_DATA.find(r => r.id === reviewId);
+    const allReviews = getAllReviews();
+    const review = allReviews.find(r => r.id === reviewId);
     setReviewState(review || null);
   }, [reviewId]);
 
@@ -1811,11 +1591,8 @@ const UserDetailPanel: React.FC<UserDetailPanelProps> = ({ userId, onBack }) => 
   const [userState, setUserState] = React.useState<User | null>(null);
 
   React.useEffect(() => {
-    const MOCK_USERS_DETAIL: User[] = [
-      { id: 'USR-001', name: 'Ahmet Yılmaz', email: 'ahmet@example.com', type: 'customer', status: 'active', joinDate: '2023-10-15', totalSpent: 2400 },
-      { id: 'USR-002', name: 'Selin Kaya', email: 'selin@example.com', type: 'customer', status: 'active', joinDate: '2023-11-01', totalSpent: 800 },
-    ];
-    const foundUser = MOCK_USERS_DETAIL.find(u => u.id === userId);
+    const allUsers = getAllUsers();
+    const foundUser = allUsers.find(u => u.id === userId);
     setUserState(foundUser || null);
   }, [userId]);
   
@@ -1932,12 +1709,8 @@ const PartnerDetailPanel: React.FC<PartnerDetailPanelProps> = ({ partnerId, onBa
   const [partnerState, setPartnerState] = React.useState<Partner | null>(null);
 
   React.useEffect(() => {
-    const MOCK_PARTNERS_DETAIL: Partner[] = [
-      { id: 'PTR-001', name: 'Yılmaz Oto Kurtarma', email: 'yilmaz@partner.com', phone: '0532 XXX XX 01', rating: 4.9, completedJobs: 128, credits: 25, status: 'active' },
-      { id: 'PTR-002', name: 'Hızlı Yol Yardım', email: 'hizli@partner.com', phone: '0533 XXX XX 02', rating: 4.7, completedJobs: 203, credits: 50, status: 'active' },
-      { id: 'PTR-003', name: 'Mega Çekici', email: 'mega@partner.com', phone: '0534 XXX XX 03', rating: 4.5, completedJobs: 89, credits: 10, status: 'pending' },
-    ];
-    const foundPartner = MOCK_PARTNERS_DETAIL.find(p => p.id === partnerId);
+    const allPartners = getAllPartners();
+    const foundPartner = allPartners.find(p => p.id === partnerId);
     setPartnerState(foundPartner || null);
   }, [partnerId]);
   
