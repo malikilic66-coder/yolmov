@@ -323,34 +323,33 @@ const CustomerProfilePage: React.FC = () => {
                   <p className="text-center text-gray-500 py-8">Henüz talep oluşturmadınız.</p>
                 ) : (
                   orders.map(order => (
-                  <div key={order.id} className="p-5 rounded-xl border border-gray-100 hover:border-brand-orange hover:shadow-md transition-all cursor-pointer group" onClick={() => setSelectedOrder(order)}>
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <h4 className="font-bold text-gray-800 group-hover:text-brand-orange transition-colors">{order.service}</h4>
-                        <p className="text-xs text-gray-400 mt-1">#{order.id} • {order.date}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-bold text-gray-800">{order.amount > 0 ? `₺${order.amount}` : '—'}</p>
-                        <span className={`text-xs px-2 py-1 rounded ${order.status === 'Tamamlandı' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'}`}>{order.status}</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
-                      <MapPin size={12} className="text-brand-orange" />
-                      <span className="flex-1 truncate">{order.from}</span>
-                      {order.to && <><ChevronRight size={12} /> <span className="flex-1 truncate">{order.to}</span></>}
-                    </div>
-                    <div className="flex items-center justify-between pt-3 border-t border-gray-50">
-                      <span className="text-xs text-gray-500">{order.provider}</span>
-                      {order.rating && (
-                        <div className="flex items-center gap-1 text-yellow-400">
-                          {[...Array(order.rating)].map((_, i) => <Star key={i} size={12} fill="currentColor" />)}
+                    <div key={order.id} className="p-5 rounded-xl border border-gray-100 hover:border-brand-orange hover:shadow-md transition-all cursor-pointer group" onClick={() => setSelectedOrder(order)}>
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <h4 className="font-bold text-gray-800 group-hover:text-brand-orange transition-colors">{order.service}</h4>
+                          <p className="text-xs text-gray-400 mt-1">#{order.id} • {order.date}</p>
                         </div>
-                      )}
+                        <div className="text-right">
+                          <p className="font-bold text-gray-800">{order.amount > 0 ? `₺${order.amount}` : '—'}</p>
+                          <span className={`text-xs px-2 py-1 rounded ${order.status === 'Tamamlandı' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'}`}>{order.status}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
+                        <MapPin size={12} className="text-brand-orange" />
+                        <span className="flex-1 truncate">{order.from}</span>
+                        {order.to && <><ChevronRight size={12} /> <span className="flex-1 truncate">{order.to}</span></>}
+                      </div>
+                      <div className="flex items-center justify-between pt-3 border-t border-gray-50">
+                        <span className="text-xs text-gray-500">{order.provider}</span>
+                        {order.rating && (
+                          <div className="flex items-center gap-1 text-yellow-400">
+                            {[...Array(order.rating)].map((_, i) => <Star key={i} size={12} fill="currentColor" />)}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
                   ))
                 )}
-                ))}
               </div>
             </div>
             )}
