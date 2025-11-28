@@ -39,6 +39,7 @@ const AdminLeadRequestDetailPage = React.lazy(() => import('./components/admin/p
 const AdminAreaRequestDetailPage = React.lazy(() => import('./components/admin/pages/AdminAreaRequestDetailPage'));
 const AdminSupportRequestDetailPage = React.lazy(() => import('./components/admin/pages/AdminSupportRequestDetailPage'));
 const NotificationTestPage = React.lazy(() => import('./components/NotificationTestPage'));
+const EmailConfirmationPage = React.lazy(() => import('./components/EmailConfirmationPage'));
 const PrivacyPolicyPage = React.lazy(() => import('./components/PrivacyPolicyPage'));
 const TermsOfServicePage = React.lazy(() => import('./components/TermsOfServicePage'));
 const NotFoundPage = React.lazy(() => import('./components/NotFoundPage'));
@@ -120,6 +121,7 @@ function App() {
             <Route path="/giris/musteri" element={<LoginPage userType="customer" />} />
             <Route path="/giris/partner" element={<LoginPage userType="partner" />} />
             <Route path="/partner/kayit" element={<PartnerRegisterPage />} />
+            <Route path="/email-dogrulama" element={<EmailConfirmationPage />} />
             
             {/* Partner Dashboard */}
             <Route path="/partner" element={<PartnerDashboard />} />

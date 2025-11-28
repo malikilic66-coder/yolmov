@@ -37,45 +37,71 @@ const LoginPage: React.FC<LoginPageProps> = ({ userType }) => {
     
     try {
       if (mode === 'register' && isCustomer) {
-        // YENİ MÜŞTERİ KAYDI
+        // ✅ YENİ MÜŞTERİ KAYDI - Supabase Auth ile
         if (!email || !firstName || !lastName || !password) {
           setError('Lütfen tüm alanları doldurun');
           setLoading(false);
           return;
         }
+
+        if (password.length < 6) {
+          setError('Şifre en az 6 karakter olmalıdır');
+          setLoading(false);
+          return;
+        }
         
-        // Supabase'e yeni müşteri kaydet
-        const newCustomer = await supabaseApi.customers.create({
+        // Supabase Auth SignUp
+        const result = await supabaseApi.auth.signUpCustomer(email, password, {
           firstName,
           lastName,
-          email,
           phone: phone || '',
-          avatarUrl: undefined,
-          city: undefined,
-          district: undefined
         });
         
-        localStorage.setItem('yolmov_customer', JSON.stringify(newCustomer));
-        navigate('/musteri/profil');
-      } else {
-        // GİRİŞ YAPMA (DEV MODE - Direct DB)
-        if (isCustomer) {
-          // Email veya telefon ile ara
-          const identifier = email || phone;
-          const customerData = { email: identifier, phone: identifier, firstName: '', lastName: '', avatarUrl: null, city: null, district: null };
-          
-          // Mock customer for dev
-          localStorage.setItem('yolmov_customer', JSON.stringify(customerData));
-          navigate('/musteri/profil');
-        } else {
-          // Partner girişi
-          const partnerData = { id: '1', email: phone, name: 'Test Partner', phone: phone };
-          localStorage.setItem('yolmov_partner', JSON.stringify(partnerData));
-          navigate('/partner');
+        // Email confirmation mesajı göster
+        setError('');
+        alert(`✅ Kayıt başarılı!\n\n📧 ${email} adresinize doğrulama maili gönderildi.\n\nLütfen mailinizi kontrol edin ve doğrulama linkine tıklayın.`);
+        
+        // Login moduna geç
+        setMode('login');
+        setPassword('');
+        
+      } else if (mode === 'login' && isCustomer) {
+        // ✅ MÜŞTERİ GİRİŞİ - Supabase Auth ile
+        if (!email || !password) {
+          setError('Lütfen email ve şifrenizi girin');
+          setLoading(false);
+          return;
         }
+        
+        // Supabase Auth SignIn
+        const { user, session } = await supabaseApi.auth.signIn(email, password);
+        
+        if (!user) {
+          setError('Giriş başarısız');
+          setLoading(false);
+          return;
+        }
+
+        // Customer bilgilerini DB'den çek
+        const customerData = await supabaseApi.customers.getById(user.id);
+        
+        if (!customerData) {
+          setError('Müşteri bilgileri bulunamadı');
+          setLoading(false);
+          return;
+        }
+        
+        // Profile'a yönlendir
+        navigate('/musteri/profil');
+        
+      } else {
+        // Partner girişi (eski mantık korundu)
+        const partnerData = { id: '1', email: phone, name: 'Test Partner', phone: phone };
+        localStorage.setItem('yolmov_partner', JSON.stringify(partnerData));
+        navigate('/partner');
       }
     } catch (err: any) {
-      console.error('Submit error:', err);
+      console.error('❌ Submit error:', err);
       setError(err.message || 'İşlem başarısız!');
     } finally {
       setLoading(false);

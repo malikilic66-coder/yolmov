@@ -42,60 +42,49 @@ const CustomerProfilePage: React.FC = () => {
     try {
       setLoading(true);
       
-      // localStorage'dan customer objesini al
-      const customerStr = localStorage.getItem('yolmov_customer');
+      // 1. Session kontrolü - Supabase Auth
+      const session = await supabaseApi.auth.getSession();
       
-      if (!customerStr) {
+      if (!session || !session.user) {
+        // Session yok - login'e yönlendir
         navigate('/giris/musteri');
         return;
       }
 
-      const storedCustomer = JSON.parse(customerStr);
+      const userId = session.user.id;
       
-      // Eğer ID varsa veritabanından güncel veriyi çek
-      if (storedCustomer.id) {
-        try {
-          const customerData = await supabaseApi.customers.getById(storedCustomer.id);
-          if (customerData) {
-            setCustomer(customerData);
-            setForm(customerData);
-          } else {
-            // DB'de yoksa localStorage'daki veriyi kullan
-            setCustomer(storedCustomer);
-            setForm(storedCustomer);
-          }
-        } catch {
-          // API hatası - localStorage verisini kullan
-          setCustomer(storedCustomer);
-          setForm(storedCustomer);
-        }
-      } else {
-        // ID yoksa localStorage verisini kullan
-        setCustomer(storedCustomer);
-        setForm(storedCustomer);
+      // 2. Customer bilgilerini DB'den çek
+      const customerData = await supabaseApi.customers.getById(userId);
+      
+      if (!customerData) {
+        // Customer kaydı bulunamadı
+        console.error('❌ Customer bulunamadı:', userId);
+        navigate('/giris/musteri');
+        return;
       }
 
-      // Request geçmişini çekmeyi dene (hata olursa boş bırak)
-      if (storedCustomer.id) {
-        try {
-          const requestHistory = await supabaseApi.requests.getByCustomerId(storedCustomer.id);
-          if (requestHistory && requestHistory.length > 0) {
-            const formattedOrders = requestHistory.map((req: any) => ({
-              id: req.id,
-              service: req.serviceType || req.service_type || 'Çekici',
-              provider: req.assignedPartnerName || 'Partner',
-              date: new Date(req.createdAt || req.created_at).toLocaleString('tr-TR'),
-              status: req.status === 'completed' ? 'Tamamlandı' : req.status === 'cancelled' ? 'İptal' : 'Devam Ediyor',
-              amount: req.amount || 0,
-              from: req.fromLocation || 'Bilinmiyor',
-              to: req.toLocation || null,
-              rating: null
-            }));
-            setOrders(formattedOrders);
-          }
-        } catch {
-          // Request geçmişi alınamadı - boş bırak
+      setCustomer(customerData);
+      setForm(customerData);
+
+      // 3. Request geçmişini çek
+      try {
+        const requestHistory = await supabaseApi.requests.getByCustomerId(userId);
+        if (requestHistory && requestHistory.length > 0) {
+          const formattedOrders = requestHistory.map((req: any) => ({
+            id: req.id,
+            service: req.serviceType || req.service_type || 'Çekici',
+            provider: req.assignedPartnerName || 'Partner',
+            date: new Date(req.createdAt || req.created_at).toLocaleString('tr-TR'),
+            status: req.status === 'completed' ? 'Tamamlandı' : req.status === 'cancelled' ? 'İptal' : 'Devam Ediyor',
+            amount: req.amount || 0,
+            from: req.fromLocation || 'Bilinmiyor',
+            to: req.toLocation || null,
+            rating: null
+          }));
+          setOrders(formattedOrders);
         }
+      } catch (err) {
+        console.warn('⚠️ Request geçmişi alınamadı:', err);
       }
     } catch (error) {
       console.error('❌ Müşteri bilgileri yüklenemedi:', error);
@@ -152,9 +141,14 @@ const CustomerProfilePage: React.FC = () => {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('yolmov_customer');
-    navigate('/');
+  const handleLogout = async () => {
+    try {
+      await supabaseApi.auth.signOut();
+      navigate('/');
+    } catch (error) {
+      console.error('❌ Çıkış hatası:', error);
+      navigate('/');
+    }
   };
 
   const handleBackHome = () => {

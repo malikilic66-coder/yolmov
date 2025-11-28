@@ -68,40 +68,68 @@ const generateId = () => {
 
 export const authApi = {
   /**
-   * Müşteri kaydı
+   * Müşteri kaydı - Email doğrulama ile
    */
   signUpCustomer: async (email: string, password: string, customerData: Partial<Customer>) => {
     try {
-      // 1. Auth kullanıcısı oluştur
+      // 1. Auth kullanıcısı oluştur (Email confirmation otomatik gönderilir)
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
         options: {
+          emailRedirectTo: `${window.location.origin}/email-dogrulama`,
           data: {
             user_type: 'customer',
-            ...customerData,
+            first_name: customerData.firstName,
+            last_name: customerData.lastName,
           },
         },
       });
 
       if (authError) throw authError;
+      if (!authData.user) throw new Error('Kullanıcı oluşturulamadı');
 
-      // 2. Customer kaydı oluştur
+      // 2. Customer kaydı oluştur (snake_case)
+      const dbCustomer = {
+        id: authData.user.id,
+        first_name: customerData.firstName || '',
+        last_name: customerData.lastName || '',
+        phone: customerData.phone || '',
+        email: email,
+        avatar_url: customerData.avatarUrl || null,
+        city: customerData.city || null,
+        district: customerData.district || null,
+      };
+
       const { data: customer, error: customerError } = await supabase
         .from('customers')
-        .insert({
-          id: authData.user!.id,
-          ...customerData,
-          email,
-        })
+        .insert(dbCustomer)
         .select()
         .single();
 
       if (customerError) throw customerError;
 
-      return { user: authData.user, customer };
+      // snake_case → camelCase dönüşümü
+      const customerCamelCase: Customer = {
+        id: customer.id,
+        firstName: customer.first_name,
+        lastName: customer.last_name,
+        phone: customer.phone,
+        email: customer.email || undefined,
+        avatarUrl: customer.avatar_url || undefined,
+        city: customer.city || undefined,
+        district: customer.district || undefined,
+        createdAt: customer.created_at,
+      };
+
+      return { 
+        user: authData.user, 
+        customer: customerCamelCase,
+        session: authData.session 
+      };
     } catch (error) {
       handleError(error, 'Customer Sign Up');
+      throw error;
     }
   },
 
@@ -151,7 +179,7 @@ export const authApi = {
   },
 
   /**
-   * Giriş yap
+   * Giriş yap - Email + Password
    */
   signIn: async (email: string, password: string) => {
     try {
@@ -160,10 +188,23 @@ export const authApi = {
         password,
       });
 
-      if (error) throw error;
-      return data;
-    } catch (error) {
-      handleError(error, 'Sign In');
+      if (error) {
+        // Türkçe hata mesajları
+        if (error.message.includes('Invalid login credentials')) {
+          throw new Error('Email veya şifre hatalı');
+        }
+        if (error.message.includes('Email not confirmed')) {
+          throw new Error('Email adresinizi doğrulamanız gerekiyor. Lütfen mail kutunuzu kontrol edin.');
+        }
+        throw error;
+      }
+
+      if (!data.user) throw new Error('Giriş başarısız');
+
+      return { user: data.user, session: data.session };
+    } catch (error: any) {
+      console.error('❌ Sign In Error:', error);
+      throw error;
     }
   },
 
@@ -188,8 +229,30 @@ export const authApi = {
       if (error) throw error;
       return user;
     } catch (error) {
-      handleError(error, 'Get Current User');
+      console.error('❌ Get Current User Error:', error);
+      return null;
     }
+  },
+
+  /**
+   * Mevcut session'ı getir
+   */
+  getSession: async () => {
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (error) throw error;
+      return session;
+    } catch (error) {
+      console.error('❌ Get Session Error:', error);
+      return null;
+    }
+  },
+
+  /**
+   * Session state değişikliklerini dinle
+   */
+  onAuthStateChange: (callback: (event: string, session: any) => void) => {
+    return supabase.auth.onAuthStateChange(callback);
   },
 
   /**
