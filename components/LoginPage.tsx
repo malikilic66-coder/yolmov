@@ -22,6 +22,9 @@ const LoginPage: React.FC<LoginPageProps> = ({ userType }) => {
   
   const [showPassword, setShowPassword] = useState(false);
   const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -33,33 +36,47 @@ const LoginPage: React.FC<LoginPageProps> = ({ userType }) => {
     setLoading(true);
     
     try {
-      // DEV MODE: Bypass Auth - doğrudan veritabanından test kullanıcılarını kullan
-      if (isCustomer) {
-        // Test müşterisi: 05321234567
-        const customers = await supabaseApi.customers.getAll();
-        const customer = customers.find(c => c.phone === phone || c.phone === '05321234567');
+      if (mode === 'register' && isCustomer) {
+        // YENİ MÜŞTERİ KAYDI
+        if (!email || !firstName || !lastName || !password) {
+          setError('Lütfen tüm alanları doldurun');
+          setLoading(false);
+          return;
+        }
         
-        if (customer) {
-          localStorage.setItem('yolmov_customer', JSON.stringify(customer));
+        // Supabase'e yeni müşteri kaydet
+        const newCustomer = await supabaseApi.customers.create({
+          firstName,
+          lastName,
+          email,
+          phone: phone || '',
+          avatarUrl: null,
+          city: null,
+          district: null
+        });
+        
+        localStorage.setItem('yolmov_customer', JSON.stringify(newCustomer));
+        navigate('/musteri/profil');
+      } else {
+        // GİRİŞ YAPMA (DEV MODE - Direct DB)
+        if (isCustomer) {
+          // Email veya telefon ile ara
+          const identifier = email || phone;
+          const customerData = { email: identifier, phone: identifier, firstName: '', lastName: '', avatarUrl: null, city: null, district: null };
+          
+          // Mock customer for dev
+          localStorage.setItem('yolmov_customer', JSON.stringify(customerData));
           navigate('/musteri/profil');
         } else {
-          setError('Müşteri bulunamadı. Test telefonu: 05321234567');
-        }
-      } else {
-        // Test partneri: hizli@partner.com
-        const partners = await supabaseApi.partners.getAll();
-        const partner = partners.find(p => p.email === phone || p.email === 'hizli@partner.com');
-        
-        if (partner) {
-          localStorage.setItem('yolmov_partner', JSON.stringify(partner));
+          // Partner girişi
+          const partnerData = { id: '1', email: phone, name: 'Test Partner', phone: phone };
+          localStorage.setItem('yolmov_partner', JSON.stringify(partnerData));
           navigate('/partner');
-        } else {
-          setError('Partner bulunamadı. Test email: hizli@partner.com');
         }
       }
     } catch (err: any) {
-      console.error('Login error:', err);
-      setError(err.message || 'Giriş başarısız!');
+      console.error('Submit error:', err);
+      setError(err.message || 'İşlem başarısız!');
     } finally {
       setLoading(false);
     }
@@ -199,24 +216,59 @@ const LoginPage: React.FC<LoginPageProps> = ({ userType }) => {
                 transition={{ duration: 0.3 }}
                 className="space-y-5"
               >
-                {/* Common Fields */}
+                {/* Email Field */}
                 <div className="group">
                   <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">
-                    {isCustomer ? "Telefon Numarası" : "Acente Kodu / Telefon"}
+                    E-posta
                   </label>
                   <div className="relative">
                     <div className={`absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors ${isCustomer ? 'text-gray-400 group-focus-within:text-brand-orange' : 'text-gray-400 group-focus-within:text-blue-600'}`}>
                       <Phone size={18} />
                     </div>
                     <input
-                      type="text"
+                      type="email"
                       className={`block w-full pl-11 pr-4 py-3.5 bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-xl focus:bg-white transition-all outline-none focus:ring-2 ${isCustomer ? 'focus:ring-brand-orange/20 focus:border-brand-orange' : 'focus:ring-blue-600/20 focus:border-blue-600'}`}
-                      placeholder={isCustomer ? "05XX XXX XX XX" : "05XX... veya Kod"}
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="ornek@email.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
                     />
                   </div>
                 </div>
+
+                {/* Name Fields - Only for Register */}
+                {mode === 'register' && isCustomer && (
+                  <>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="group">
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">
+                          Ad
+                        </label>
+                        <input
+                          type="text"
+                          className="block w-full px-4 py-3.5 bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-xl focus:bg-white transition-all outline-none focus:ring-2 focus:ring-brand-orange/20 focus:border-brand-orange"
+                          placeholder="Adınız"
+                          value={firstName}
+                          onChange={(e) => setFirstName(e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div className="group">
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">
+                          Soyad
+                        </label>
+                        <input
+                          type="text"
+                          className="block w-full px-4 py-3.5 bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-xl focus:bg-white transition-all outline-none focus:ring-2 focus:ring-brand-orange/20 focus:border-brand-orange"
+                          placeholder="Soyadınız"
+                          value={lastName}
+                          onChange={(e) => setLastName(e.target.value)}
+                          required
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
 
                 <div className="group">
                   <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">
