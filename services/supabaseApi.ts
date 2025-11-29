@@ -2037,19 +2037,37 @@ const supabaseApi = {
      */
     uploadCustomerPhoto: async (file: File, customerId?: string | null): Promise<string> => {
       try {
+        // Session kontrolü - RLS için
+        await ensureAuthSession();
+        
         const safeName = file.name.replace(/[^a-zA-Z0-9_.-]/g, '_');
-        const folder = customerId || 'anon';
-        const path = `${folder}/${Date.now()}_${safeName}`;
-        // Bucket var mı kontrolü yapamayız (client tarafında listeleyip yakalayacağız)
+        const folder = customerId || 'guest';
+        const timestamp = Date.now();
+        const path = `${folder}/${timestamp}_${safeName}`;
+        
+        console.log(`📤 Uploading to: request-photos/${path}`);\n        
+        // PUBLIC bucket için upsert true yapabiliriz
         const { data, error } = await supabase.storage
           .from('request-photos')
-          .upload(path, file, { upsert: false });
-        if (error) throw error;
+          .upload(path, file, { 
+            upsert: true,
+            contentType: file.type 
+          });
+        
+        if (error) {
+          console.error('Storage upload error:', error);
+          throw error;
+        }
+        
+        // Public URL al
         const { data: publicData } = supabase.storage
           .from('request-photos')
           .getPublicUrl(path);
+        
+        console.log(`✅ Photo uploaded: ${publicData.publicUrl}`);\n        
         return publicData.publicUrl;
       } catch (error: any) {
+        console.error('❌ Upload failed:', error);
         handleError(error, 'Upload Customer Photo');
         throw error;
       }

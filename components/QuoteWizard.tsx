@@ -150,7 +150,28 @@ const QuoteWizard: React.FC = () => {
             ? customer.phone
             : formData.phone;
           
-          const customerId = customer?.id || null;
+          // IMPORTANT: Eğer giriş yapılmamışsa misafir kullanıcı olarak devam et
+          let customerId = customer?.id || null;
+          
+          // Eğer giriş yapılmamışsa ama telefon varsa, geçici müşteri kaydı oluştur
+          if (!customerId && customerPhone) {
+            try {
+              console.log('🔄 Creating guest customer record...');
+              const guestCustomer = await supabaseApi.customers.create({
+                firstName: formData.firstName || 'Misafir',
+                lastName: formData.lastName || 'Kullanıcı',
+                phone: customerPhone,
+                email: undefined,
+                city: formData.fromCity || undefined,
+                district: formData.fromDistrict || undefined,
+              });
+              customerId = guestCustomer.id;
+              console.log('✅ Guest customer created:', customerId);
+            } catch (guestError) {
+              console.warn('⚠️ Could not create guest customer, proceeding without customer_id', guestError);
+              // customerId null kalacak, requests tablosu artık bunu kabul ediyor
+            }
+          }
           
           // Build service type from formData
           const serviceTypeMap: Record<string, string> = {
@@ -195,9 +216,13 @@ const QuoteWizard: React.FC = () => {
               try {
                 const photoUrl = await supabaseApi.storage.uploadCustomerPhoto(photo, customerId);
                 photoUrls.push(photoUrl);
-              } catch (error) {
+              } catch (error: any) {
                 console.error('Photo upload failed:', error);
-                // Continue with other photos
+                // RLS hatası detaylı loglama
+                if (error?.message?.includes('row-level security')) {
+                  console.error('⚠️ RLS Policy Error: Storage bucket policies may be missing. Check Supabase Dashboard.');
+                }
+                // Continue with other photos - fotoğraf zorunlu değil
               }
             }
             
@@ -234,10 +259,22 @@ const QuoteWizard: React.FC = () => {
           
           setIsSubmitting(false);
           setCurrentStep(5);
-        } catch (error) {
+        } catch (error: any) {
           console.error('❌ Talep oluşturma hatası:', error);
           setIsSubmitting(false);
-          alert('Talep oluşturulurken bir hata oluştu. Lütfen tekrar deneyin.');
+          
+          // Hata mesajını kullanıcıya göster
+          let errorMessage = 'Talep oluşturulurken bir hata oluştu. Lütfen tekrar deneyin.';
+          
+          if (error?.message?.includes('customer_id')) {
+            errorMessage = 'Lütfen iletişim bilgilerinizi eksiksiz doldurun.';
+          } else if (error?.message?.includes('from_coordinates')) {
+            errorMessage = 'Konum bilgileri kaydedilemedi. Lütfen konum seçiminizi kontrol edin.';
+          } else if (error?.message?.includes('row-level security')) {
+            errorMessage = 'Güvenlik politikası hatası. Lütfen giriş yapın veya daha sonra tekrar deneyin.';
+          }
+          
+          alert(errorMessage);
         }
       } else {
         setCurrentStep(currentStep + 1);
