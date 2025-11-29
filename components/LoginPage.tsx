@@ -110,6 +110,10 @@ const LoginPage: React.FC<LoginPageProps> = ({ userType }) => {
           setLoading(false);
           return;
         }
+        // LocalStorage'a kaydet (QuoteWizard ve diğer sayfalar kullanıyor)
+        try {
+          localStorage.setItem('yolmov_customer', JSON.stringify(customerData));
+        } catch {}
         
         // Profile'a yönlendir
         console.log('🚀 Navigating to profile...');

@@ -73,6 +73,12 @@ const ProviderCard = ({ provider, index, onClick }: { provider: Provider, index:
           <button 
               onClick={(e) => {
                 e.stopPropagation();
+                const customer = localStorage.getItem('yolmov_customer');
+                if (!customer) {
+                  alert('🔒 Hizmet sağlayıcı seçmek için üye girişi yapmanız gerekiyor.');
+                  navigate('/giris/musteri');
+                  return;
+                }
                 onClick(provider);
               }}
               className="w-full bg-brand-orange text-white px-6 py-3 rounded-xl font-bold hover:bg-brand-lightOrange transition-colors shadow-md shadow-orange-100 flex items-center justify-center gap-2"
@@ -273,7 +279,15 @@ const ListingPage: React.FC = () => {
                   </p>
 
                   <button 
-                     onClick={() => navigate('/teklif')}
+                     onClick={() => {
+                       const customer = localStorage.getItem('yolmov_customer');
+                       if (!customer) {
+                         alert('🔒 Teklif talebi oluşturmak için üye girişi yapmanız gerekiyor.');
+                         navigate('/giris/musteri');
+                         return;
+                       }
+                       navigate('/teklif');
+                     }}
                      className="w-full md:w-auto px-8 py-4 bg-brand-orange text-white font-bold rounded-xl shadow-lg shadow-orange-200 hover:bg-brand-lightOrange transition-all hover:-translate-y-1 flex items-center justify-center gap-3"
                   >
                      <ClipboardList size={20} /> Hemen Ücretsiz Teklif Al

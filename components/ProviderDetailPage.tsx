@@ -252,7 +252,15 @@ const ProviderDetailPage: React.FC = () => {
                    </div>
 
                    <button 
-                      onClick={() => navigate('/teklif')}
+                      onClick={() => {
+                        const customer = localStorage.getItem('yolmov_customer');
+                        if (!customer) {
+                          alert('🔒 Teklif almak için üye girişi yapmanız gerekiyor.');
+                          navigate('/giris/musteri');
+                          return;
+                        }
+                        navigate('/teklif');
+                      }}
                       className="w-full py-4 bg-brand-orange text-white rounded-xl font-bold shadow-lg shadow-orange-200 hover:bg-brand-lightOrange transition-all transform hover:-translate-y-1 active:scale-95 mb-3"
                    >
                       Teklif Al
