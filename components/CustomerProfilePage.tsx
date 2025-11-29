@@ -43,10 +43,7 @@ interface FavoriteDisplay {
   phone?: string;
 }
 
-const MOCK_SAVED_ADDRESSES = [
-  { id: 1, label: 'Ev', type: 'home', address: 'Bağdat Cad. No: 125, Kadıköy', city: 'İstanbul', district: 'Kadıköy' },
-  { id: 2, label: 'İş', type: 'work', address: 'Maslak Meydan Sok. Veko Giz Plaza', city: 'İstanbul', district: 'Sarıyer' }
-];
+// Kayıtlı adresler Supabase'den yüklenecek
 
 const CustomerProfilePage: React.FC = () => {
   const navigate = useNavigate();
@@ -132,6 +129,20 @@ const CustomerProfilePage: React.FC = () => {
       } catch (err) {
         console.warn('⚠️ Favoriler alınamadı:', err);
       }
+      // 5. Kayıtlı adresleri çek
+      try {
+        const addrRows = await supabaseApi.addresses.getByCustomerId(userId);
+        setAddresses(addrRows.map(r => ({
+          id: r.id,
+          label: r.label,
+          type: r.type,
+          address: r.address,
+          city: r.city,
+          district: r.district,
+        })));
+      } catch (err) {
+        console.warn('⚠️ Adresler alınamadı:', err);
+      }
     } catch (error) {
       console.error('❌ Müşteri bilgileri yüklenemedi:', error);
       navigate('/giris/musteri');
@@ -145,6 +156,7 @@ const CustomerProfilePage: React.FC = () => {
   const [selectedOrder, setSelectedOrder] = useState<typeof MOCK_ORDERS[0] | null>(null);
   const [selectedFavorite, setSelectedFavorite] = useState<FavoriteDisplay | null>(null);
   const [showAddAddress, setShowAddAddress] = useState(false);
+  const [addresses, setAddresses] = useState<Array<{id:string; label:string; type:'home'|'work'; address:string; city:string; district:string}>>([]);
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [favorites, setFavorites] = useState<FavoriteDisplay[]>([]);
   // NOT: isEditing kaldırıldı, editing kullanılacak
@@ -231,14 +243,43 @@ const CustomerProfilePage: React.FC = () => {
     }
   };
 
-  const handleAddAddress = () => {
+  const handleAddAddress = async () => {
     if (!addressForm.label || !addressForm.address || !addressForm.city || !addressForm.district) {
       showToast('Lütfen tüm alanları doldurun!', 'error');
       return;
     }
-    showToast('Adres başarıyla eklendi!', 'success');
-    setShowAddAddress(false);
-    setAddressForm({ label: '', type: 'home', address: '', city: '', district: '' });
+    try {
+      if (!customer?.id) return;
+      const created = await supabaseApi.addresses.add(customer.id, {
+        label: addressForm.label,
+        type: addressForm.type as 'home'|'work',
+        address: addressForm.address,
+        city: addressForm.city,
+        district: addressForm.district,
+      });
+      setAddresses(prev => [{
+        id: created.id,
+        label: created.label,
+        type: created.type,
+        address: created.address,
+        city: created.city,
+        district: created.district,
+      }, ...prev]);
+      showToast('Adres başarıyla eklendi!', 'success');
+      setShowAddAddress(false);
+      setAddressForm({ label: '', type: 'home', address: '', city: '', district: '' });
+    } catch (err) {
+      showToast('Adres eklenirken hata oluştu', 'error');
+    }
+  };
+
+  const handleRemoveAddress = async (addressId: string) => {
+    try {
+      await supabaseApi.addresses.remove(addressId);
+      setAddresses(prev => prev.filter(a => a.id !== addressId));
+    } catch (err) {
+      showToast('Adres silinirken hata oluştu', 'error');
+    }
   };
 
   // Tab Navigation Component
@@ -510,7 +551,7 @@ const CustomerProfilePage: React.FC = () => {
                 <button onClick={() => setShowAddAddress(true)} className="px-4 py-2 rounded-xl bg-brand-orange text-white text-sm font-bold flex items-center gap-1 hover:bg-brand-lightOrange transition-colors"><Plus size={16}/> Adres Ekle</button>
               </div>
               <div className="space-y-4">
-                {MOCK_SAVED_ADDRESSES.map(addr => (
+                {addresses.length > 0 ? addresses.map(addr => (
                   <div key={addr.id} className="p-5 rounded-xl border border-gray-100 hover:border-brand-orange hover:shadow-md transition-all group">
                     <div className="flex items-start justify-between">
                       <div className="flex items-start gap-3">
@@ -523,10 +564,12 @@ const CustomerProfilePage: React.FC = () => {
                           <p className="text-xs text-gray-400 mt-1">{addr.district}, {addr.city}</p>
                         </div>
                       </div>
-                      <button className="text-red-500 hover:text-red-600 p-2"><Trash2 size={18} /></button>
+                      <button onClick={() => handleRemoveAddress(addr.id)} className="text-red-500 hover:text-red-600 p-2"><Trash2 size={18} /></button>
                     </div>
                   </div>
-                ))}
+                )) : (
+                  <div className="text-center py-10 text-gray-500 text-sm">Henüz kayıtlı adresiniz yok.</div>
+                )}
               </div>
             </div>
             )}

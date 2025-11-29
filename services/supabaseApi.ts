@@ -14,6 +14,7 @@
 import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from './supabase';
 import type {
   Customer,
+  CustomerAddress,
   AdminUser,
   Request,
   Offer,
@@ -49,6 +50,18 @@ interface CustomerFavoriteRow {
   partner_id: string;
   created_at: string;
   partners?: Partner; // join alias
+}
+
+// Address row
+interface CustomerAddressRow {
+  id: string;
+  customer_id: string;
+  label: string;
+  type: 'home' | 'work';
+  address: string;
+  city: string;
+  district: string;
+  created_at: string;
 }
 
 // ============================================
@@ -706,6 +719,79 @@ export const favoritesApi = {
       if (error) throw error;
     } catch (error) {
       handleError(error, 'Remove Favorite');
+      throw error;
+    }
+  }
+};
+
+// ============================================
+// ADDRESSES API
+// ============================================
+
+export const addressesApi = {
+  getByCustomerId: async (customerId: string): Promise<CustomerAddress[]> => {
+    try {
+      const { data, error } = await supabase
+        .from('customer_addresses')
+        .select('*')
+        .eq('customer_id', customerId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data || []).map((d: CustomerAddressRow) => ({
+        id: d.id,
+        customer_id: d.customer_id,
+        label: d.label,
+        type: d.type,
+        address: d.address,
+        city: d.city,
+        district: d.district,
+        created_at: d.created_at,
+      }));
+    } catch (error) {
+      handleError(error, 'Get Addresses');
+      return [];
+    }
+  },
+  add: async (customerId: string, data: Omit<CustomerAddress, 'id' | 'customer_id' | 'created_at'>): Promise<CustomerAddress> => {
+    try {
+      const insertData = {
+        customer_id: customerId,
+        label: data.label,
+        type: data.type,
+        address: data.address,
+        city: data.city,
+        district: data.district,
+      };
+      const { data: row, error } = await supabase
+        .from('customer_addresses')
+        .insert(insertData)
+        .select('*')
+        .single();
+      if (error) throw error;
+      return {
+        id: row.id,
+        customer_id: row.customer_id,
+        label: row.label,
+        type: row.type,
+        address: row.address,
+        city: row.city,
+        district: row.district,
+        created_at: row.created_at,
+      };
+    } catch (error) {
+      handleError(error, 'Add Address');
+      throw error;
+    }
+  },
+  remove: async (addressId: string): Promise<void> => {
+    try {
+      const { error } = await supabase
+        .from('customer_addresses')
+        .delete()
+        .eq('id', addressId);
+      if (error) throw error;
+    } catch (error) {
+      handleError(error, 'Remove Address');
       throw error;
     }
   }
@@ -1905,6 +1991,7 @@ const supabaseApi = {
   systemLogs: systemLogsApi,
   realtime: realtimeApi,
   analytics: analyticsApi,
+  addresses: addressesApi,
 };
 
 export { supabaseApi };
