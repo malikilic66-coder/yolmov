@@ -43,6 +43,14 @@ interface Partner {
   updated_at?: string;
 }
 
+interface CustomerFavoriteRow {
+  id: string;
+  customer_id: string;
+  partner_id: string;
+  created_at: string;
+  partners?: Partner; // join alias
+}
+
 // ============================================
 // UTILITY FUNCTIONS
 // ============================================
@@ -656,6 +664,51 @@ export const partnersApi = {
       handleError(error, `Delete Partner ${id}`);
     }
   },
+};
+
+// ============================================
+// FAVORITES API
+// ============================================
+
+export const favoritesApi = {
+  getByCustomerId: async (customerId: string): Promise<CustomerFavoriteRow[]> => {
+    try {
+      const { data, error } = await supabase
+        .from('customer_favorites')
+        .select('id, customer_id, partner_id, created_at, partners:partners(id, company_name, phone, services, rating)')
+        .eq('customer_id', customerId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      handleError(error, 'Get Favorites');
+      return [];
+    }
+  },
+  add: async (customerId: string, partnerId: string): Promise<void> => {
+    try {
+      const { error } = await supabase
+        .from('customer_favorites')
+        .insert({ customer_id: customerId, partner_id: partnerId });
+      if (error) throw error;
+    } catch (error) {
+      handleError(error, 'Add Favorite');
+      throw error;
+    }
+  },
+  remove: async (customerId: string, partnerId: string): Promise<void> => {
+    try {
+      const { error } = await supabase
+        .from('customer_favorites')
+        .delete()
+        .eq('customer_id', customerId)
+        .eq('partner_id', partnerId);
+      if (error) throw error;
+    } catch (error) {
+      handleError(error, 'Remove Favorite');
+      throw error;
+    }
+  }
 };
 
 // ============================================

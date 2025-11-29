@@ -34,10 +34,14 @@ const MOCK_ORDERS_TEMPLATE = [
   { id: 'REQ-4521', service: 'Çekici Hizmeti', provider: 'Kurtarma Ekibi A.Ş.', date: '18 Kas 2025 14:35', status: 'Tamamlandı', amount: 850, from: 'Kadıköy, İstanbul', to: 'Maltepe Servis', rating: 5 }
 ];
 
-const MOCK_FAVORITES = [
-  { id: 1, name: 'Kurtarma Ekibi A.Ş.', rating: 4.8, services: 'Çekici, Akü', location: 'Kadıköy, İstanbul', image: 'https://i.pravatar.cc/150?img=12' },
-  { id: 2, name: 'Hızlı Yol Yardım', rating: 4.9, services: 'Akü, Lastik', location: 'Beşiktaş, İstanbul', image: 'https://i.pravatar.cc/150?img=33' }
-];
+// Favoriler Supabase'den yüklenecek
+interface FavoriteDisplay {
+  id: string; // partner_id
+  name: string;
+  rating?: number;
+  services?: string; // virgülle ayrılmış hizmet listesi
+  phone?: string;
+}
 
 const MOCK_SAVED_ADDRESSES = [
   { id: 1, label: 'Ev', type: 'home', address: 'Bağdat Cad. No: 125, Kadıköy', city: 'İstanbul', district: 'Kadıköy' },
@@ -114,6 +118,20 @@ const CustomerProfilePage: React.FC = () => {
       } catch (err) {
         console.warn('⚠️ Request geçmişi alınamadı:', err);
       }
+      // 4. Favorileri çek
+      try {
+        const favRows = await supabaseApi.favorites.getByCustomerId(userId);
+        const mapped = favRows.map(row => ({
+          id: row.partner_id,
+          name: row.partners?.company_name || 'Partner',
+          rating: row.partners?.rating,
+          services: (row.partners?.services || []).join(', '),
+          phone: row.partners?.phone
+        }));
+        setFavorites(mapped);
+      } catch (err) {
+        console.warn('⚠️ Favoriler alınamadı:', err);
+      }
     } catch (error) {
       console.error('❌ Müşteri bilgileri yüklenemedi:', error);
       navigate('/giris/musteri');
@@ -125,10 +143,10 @@ const CustomerProfilePage: React.FC = () => {
   
   // Modals
   const [selectedOrder, setSelectedOrder] = useState<typeof MOCK_ORDERS[0] | null>(null);
-  const [selectedFavorite, setSelectedFavorite] = useState<typeof MOCK_FAVORITES[0] | null>(null);
+  const [selectedFavorite, setSelectedFavorite] = useState<FavoriteDisplay | null>(null);
   const [showAddAddress, setShowAddAddress] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
-  const [favorites, setFavorites] = useState(MOCK_FAVORITES);
+  const [favorites, setFavorites] = useState<FavoriteDisplay[]>([]);
   // NOT: isEditing kaldırıldı, editing kullanılacak
   
   // Address Form
@@ -203,8 +221,14 @@ const CustomerProfilePage: React.FC = () => {
     setPasswordForm({ current: '', new: '', confirm: '' });
   };
 
-  const handleRemoveFavorite = (id: number) => {
-    setFavorites(prev => prev.filter(f => f.id !== id));
+  const handleRemoveFavorite = async (partnerId: string) => {
+    try {
+      if (!customer?.id) return;
+      await supabaseApi.favorites.remove(customer.id, partnerId);
+      setFavorites(prev => prev.filter(f => f.id !== partnerId));
+    } catch (err) {
+      showToast('Favori silinirken hata oluştu', 'error');
+    }
   };
 
   const handleAddAddress = () => {
@@ -455,17 +479,18 @@ const CustomerProfilePage: React.FC = () => {
               <div className="space-y-4">
                 {favorites.length > 0 ? favorites.map(fav => (
                   <div key={fav.id} className="flex items-center gap-4 p-5 rounded-xl border border-gray-100 hover:border-brand-orange hover:shadow-md transition-all group">
-                    <img src={fav.image} alt={fav.name} className="w-14 h-14 rounded-full object-cover border border-gray-100 cursor-pointer" onClick={() => setSelectedFavorite(fav)} />
+                    <div className="w-14 h-14 rounded-full bg-orange-100 text-orange-600 font-bold flex items-center justify-center text-sm cursor-pointer" onClick={() => setSelectedFavorite(fav)}>
+                      {fav.name.charAt(0)}
+                    </div>
                     <div className="flex-1 cursor-pointer" onClick={() => setSelectedFavorite(fav)}>
                       <h4 className="font-bold text-gray-800 group-hover:text-brand-orange transition-colors">{fav.name}</h4>
-                      <p className="text-xs text-gray-500">{fav.services}</p>
+                      {fav.services && <p className="text-xs text-gray-500">{fav.services}</p>}
                       <div className="flex items-center gap-2 mt-1">
-                        <Star size={12} className="text-yellow-400 fill-yellow-400" />
-                        <span className="text-xs font-bold text-gray-600">{fav.rating}</span>
-                        <span className="text-xs text-gray-400">• {fav.location}</span>
+                        {fav.rating && <><Star size={12} className="text-yellow-400 fill-yellow-400" /><span className="text-xs font-bold text-gray-600">{fav.rating.toFixed(1)}</span></>}
+                        {fav.phone && <span className="text-xs text-gray-400">• {fav.phone}</span>}
                       </div>
                     </div>
-                    <button onClick={() => handleRemoveFavorite(fav.id)} className="text-red-500 hover:text-red-600 p-2"><Heart size={20} fill="currentColor" /></button>
+                    <button onClick={() => handleRemoveFavorite(fav.id)} className="text-red-500 hover:text-red-600 p-2" title="Favorilerden çıkar"><Heart size={20} fill="currentColor" /></button>
                   </div>
                 )) : (
                   <div className="text-center py-12">
@@ -672,29 +697,24 @@ const CustomerProfilePage: React.FC = () => {
               <button onClick={() => setSelectedFavorite(null)} className="p-2 hover:bg-gray-100 rounded-lg"><X size={24} /></button>
             </div>
             <div className="flex items-center gap-4 mb-6">
-              <img src={selectedFavorite.image} alt={selectedFavorite.name} className="w-20 h-20 rounded-full object-cover border-2 border-gray-100" />
+              <div className="w-20 h-20 rounded-full bg-orange-100 text-orange-600 font-bold flex items-center justify-center text-xl">
+                {selectedFavorite.name.charAt(0)}
+              </div>
               <div>
                 <h4 className="text-xl font-bold text-gray-900">{selectedFavorite.name}</h4>
                 <div className="flex items-center gap-2 mt-1">
-                  <Star size={16} className="text-yellow-400 fill-yellow-400" />
-                  <span className="text-sm font-bold text-gray-700">{selectedFavorite.rating}</span>
+                  {selectedFavorite.rating && <><Star size={16} className="text-yellow-400 fill-yellow-400" /><span className="text-sm font-bold text-gray-700">{selectedFavorite.rating.toFixed(1)}</span></>}
+                  {selectedFavorite.phone && <span className="text-xs text-gray-500">• {selectedFavorite.phone}</span>}
                 </div>
               </div>
             </div>
-            <div className="space-y-4">
-              <div className="p-4 bg-gray-50 rounded-xl">
+            {selectedFavorite.services && (
+              <div className="p-4 bg-gray-50 rounded-xl mb-4">
                 <p className="text-xs text-gray-500 mb-1">Sunulan Hizmetler</p>
                 <p className="text-sm font-medium text-gray-900">{selectedFavorite.services}</p>
               </div>
-              <div className="p-4 bg-gray-50 rounded-xl">
-                <p className="text-xs text-gray-500 mb-1">Konum</p>
-                <div className="flex items-center gap-2">
-                  <MapPin size={16} className="text-brand-orange" />
-                  <p className="text-sm font-medium text-gray-900">{selectedFavorite.location}</p>
-                </div>
-              </div>
-            </div>
-            <button className="w-full mt-6 py-3 bg-brand-orange text-white rounded-xl font-bold hover:bg-brand-lightOrange transition-colors">
+            )}
+            <button className="w-full mt-2 py-3 bg-brand-orange text-white rounded-xl font-bold hover:bg-brand-lightOrange transition-colors">
               Teklif İste
             </button>
           </div>
