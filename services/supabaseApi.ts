@@ -55,7 +55,15 @@ interface CustomerFavoriteRow {
   customer_id: string;
   partner_id: string;
   created_at: string;
-  partners?: Partner; // join alias
+  partners?: {
+    id: string;
+    name: string;
+    phone: string;
+    rating?: number;
+    city?: string;
+    district?: string;
+    service_types?: string[];
+  } | null;
 }
 
 // Address row
@@ -715,7 +723,7 @@ export const favoritesApi = {
         .eq('customer_id', customerId)
         .order('created_at', { ascending: false });
       if (error) throw error;
-      return data || [];
+      return (data || []) as CustomerFavoriteRow[];
     } catch (error) {
       handleError(error, 'Get Favorites');
       return [];
@@ -2045,7 +2053,8 @@ const supabaseApi = {
         const timestamp = Date.now();
         const path = `${folder}/${timestamp}_${safeName}`;
         
-        console.log(`📤 Uploading to: request-photos/${path}`);\n        
+        console.log(`📤 Uploading to: request-photos/${path}`);
+        
         // PUBLIC bucket için upsert true yapabiliriz
         const { data, error } = await supabase.storage
           .from('request-photos')
@@ -2064,7 +2073,8 @@ const supabaseApi = {
           .from('request-photos')
           .getPublicUrl(path);
         
-        console.log(`✅ Photo uploaded: ${publicData.publicUrl}`);\n        
+        console.log(`✅ Photo uploaded: ${publicData.publicUrl}`);
+        
         return publicData.publicUrl;
       } catch (error: any) {
         console.error('❌ Upload failed:', error);
