@@ -1991,6 +1991,7 @@ const supabaseApi = {
   systemLogs: systemLogsApi,
   realtime: realtimeApi,
   analytics: analyticsApi,
+  favorites: favoritesApi,
   addresses: addressesApi,
 };
 
