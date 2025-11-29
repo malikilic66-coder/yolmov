@@ -105,6 +105,7 @@ export interface Customer {
   city?: string;
   district?: string;
   createdAt?: string;
+}
 
 export interface CustomerAddress {
   id: string;
@@ -115,7 +116,6 @@ export interface CustomerAddress {
   city: string;
   district: string;
   created_at?: string;
-}
 }
 
 // B2C Request (Talep) yapısı - TEK KAYNAK
