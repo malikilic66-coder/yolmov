@@ -547,6 +547,23 @@ const CustomerProfilePage: React.FC = () => {
                   </div>
                 </div>
               </div>
+
+              {/* Çekici Talep Et CTA */}
+              <div className="mt-8 p-6 rounded-2xl bg-gradient-to-br from-orange-50 to-orange-100 border border-orange-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-bold text-gray-900 text-lg mb-1">Yol Yardım İhtiyacınız mı Var?</h4>
+                    <p className="text-sm text-gray-600">Hızlı ve güvenilir çekici hizmeti için hemen teklif alın!</p>
+                  </div>
+                  <button
+                    onClick={() => navigate('/teklif')}
+                    className="px-6 py-3 bg-brand-orange text-white rounded-xl font-bold hover:bg-brand-lightOrange transition-all shadow-lg hover:shadow-xl flex items-center gap-2 whitespace-nowrap"
+                  >
+                    <Package size={18} />
+                    Çekici Talep Et
+                  </button>
+                </div>
+              </div>
             </div>
             )}
 
@@ -555,6 +572,13 @@ const CustomerProfilePage: React.FC = () => {
             <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-2xl font-display font-bold text-gray-900">Son Taleplerim</h3>
+                <button
+                  onClick={() => navigate('/teklif')}
+                  className="px-4 py-2.5 bg-brand-orange text-white rounded-xl font-bold text-sm hover:bg-brand-lightOrange transition-all shadow flex items-center gap-2"
+                >
+                  <Plus size={16} />
+                  Yeni Talep
+                </button>
               </div>
               <div className="space-y-4">
                 {loading ? (
