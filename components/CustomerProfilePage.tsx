@@ -314,6 +314,8 @@ const CustomerProfilePage: React.FC = () => {
       await supabaseApi.notificationPreferences.update(customer.id, {
         [key]: newValue
       });
+      // Başarı bildirimi
+      showToast('Bildirim tercihiniz güncellendi', 'success');
     } catch (err) {
       console.error('❌ Bildirim tercihi güncellenemedi:', err);
       // Hata durumunda geri al
