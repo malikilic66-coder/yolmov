@@ -110,13 +110,12 @@ const CustomerProfilePage: React.FC = () => {
           // Raw requests'i sakla (modal için)
           setRequests(requestHistory);
           
-          const formattedOrders = requestHistory.map((req: any) => {
+          const formattedOrders = requestHistory.map((req: Request) => {
             // Tarih formatı düzelt
             let formattedDate = 'Bilinmiyor';
             try {
-              const dateValue = req.created_at || req.createdAt;
-              if (dateValue) {
-                const date = new Date(dateValue);
+              if (req.createdAt) {
+                const date = new Date(req.createdAt);
                 if (!isNaN(date.getTime())) {
                   formattedDate = new Intl.DateTimeFormat('tr-TR', {
                     day: '2-digit',
@@ -139,7 +138,6 @@ const CustomerProfilePage: React.FC = () => {
               'yakit': 'Yakıt Desteği',
               'anahtar': 'Anahtar Çilingir'
             };
-            const serviceType = req.service_type || req.serviceType || 'cekici';
             
             // Status çevir
             const statusMap: Record<string, string> = {
@@ -152,13 +150,13 @@ const CustomerProfilePage: React.FC = () => {
             
             return {
               id: req.id,
-              service: serviceTypeMap[serviceType] || 'Yol Yardım',
-              provider: req.assigned_partner_name || req.assignedPartnerName || 'Bekliyor',
+              service: serviceTypeMap[req.serviceType] || 'Yol Yardım',
+              provider: req.assignedPartnerName || 'Bekliyor',
               date: formattedDate,
               status: statusMap[req.status] || req.status || 'Açık',
               amount: req.amount || 0,
-              from: req.from_location || req.fromLocation || 'Başlangıç',
-              to: req.to_location || req.toLocation || null,
+              from: req.fromLocation || 'Başlangıç',
+              to: req.toLocation || null,
               rating: null
             };
           });

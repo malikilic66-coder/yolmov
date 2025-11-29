@@ -969,6 +969,56 @@ export const notificationPreferencesApi = {
 // REQUESTS API
 // ============================================
 
+// Helper: Map TS camelCase to DB snake_case for Request
+const mapRequestToDB = (request: Partial<Request>): any => {
+  const dbRequest: any = {};
+  if (request.customerId !== undefined) dbRequest.customer_id = request.customerId;
+  if (request.customerName !== undefined) dbRequest.customer_name = request.customerName;
+  if (request.serviceType !== undefined) dbRequest.service_type = request.serviceType;
+  if (request.description !== undefined) dbRequest.description = request.description;
+  if (request.fromLocation !== undefined) dbRequest.from_location = request.fromLocation;
+  if (request.toLocation !== undefined) dbRequest.to_location = request.toLocation;
+  if (request.vehicleInfo !== undefined) dbRequest.vehicle_info = request.vehicleInfo;
+  if (request.status !== undefined) dbRequest.status = request.status;
+  if (request.amount !== undefined) dbRequest.amount = request.amount;
+  if (request.jobStage !== undefined) dbRequest.job_stage = request.jobStage;
+  if (request.assignedPartnerId !== undefined) dbRequest.assigned_partner_id = request.assignedPartnerId;
+  if (request.assignedPartnerName !== undefined) dbRequest.assigned_partner_name = request.assignedPartnerName;
+  if (request.stageUpdatedAt !== undefined) dbRequest.stage_updated_at = request.stageUpdatedAt;
+  if (request.vehicleCondition !== undefined) dbRequest.vehicle_condition = request.vehicleCondition;
+  if (request.hasLoad !== undefined) dbRequest.has_load = request.hasLoad;
+  if (request.loadDescription !== undefined) dbRequest.load_description = request.loadDescription;
+  if (request.damagePhotoUrls !== undefined) dbRequest.damage_photo_urls = request.damagePhotoUrls;
+  if (request.timing !== undefined) dbRequest.timing = request.timing;
+  if (request.customerPhone !== undefined) dbRequest.customer_phone = request.customerPhone;
+  return dbRequest;
+};
+
+// Helper: Map DB snake_case to TS camelCase for Request
+const mapRequestFromDB = (dbRequest: any): Request => ({
+  id: dbRequest.id,
+  customerId: dbRequest.customer_id,
+  customerName: dbRequest.customer_name,
+  serviceType: dbRequest.service_type,
+  description: dbRequest.description,
+  fromLocation: dbRequest.from_location,
+  toLocation: dbRequest.to_location,
+  vehicleInfo: dbRequest.vehicle_info,
+  status: dbRequest.status,
+  createdAt: dbRequest.created_at,
+  amount: dbRequest.amount,
+  jobStage: dbRequest.job_stage,
+  assignedPartnerId: dbRequest.assigned_partner_id,
+  assignedPartnerName: dbRequest.assigned_partner_name,
+  stageUpdatedAt: dbRequest.stage_updated_at,
+  vehicleCondition: dbRequest.vehicle_condition,
+  hasLoad: dbRequest.has_load,
+  loadDescription: dbRequest.load_description,
+  damagePhotoUrls: dbRequest.damage_photo_urls,
+  timing: dbRequest.timing,
+  customerPhone: dbRequest.customer_phone,
+});
+
 export const requestsApi = {
   getAll: async (): Promise<Request[]> => {
     try {
@@ -979,7 +1029,7 @@ export const requestsApi = {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data || [];
+      return (data || []).map(mapRequestFromDB);
     } catch (error) {
       handleError(error, 'Get All Requests');
       return [];
@@ -996,7 +1046,7 @@ export const requestsApi = {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data || [];
+      return (data || []).map(mapRequestFromDB);
     } catch (error) {
       handleError(error, `Get Requests for Customer ${customerId}`);
       return [];
@@ -1013,7 +1063,7 @@ export const requestsApi = {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data || [];
+      return (data || []).map(mapRequestFromDB);
     } catch (error) {
       handleError(error, `Get Requests for Partner ${partnerId}`);
       return [];
@@ -1030,7 +1080,7 @@ export const requestsApi = {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data || [];
+      return (data || []).map(mapRequestFromDB);
     } catch (error) {
       handleError(error, 'Get Open Requests');
       return [];
@@ -1047,7 +1097,7 @@ export const requestsApi = {
         .single();
 
       if (error) throw error;
-      return data;
+      return data ? mapRequestFromDB(data) : null;
     } catch (error) {
       handleError(error, `Get Request ${id}`);
       return null;
@@ -1057,14 +1107,15 @@ export const requestsApi = {
   create: async (request: Omit<Request, 'id' | 'createdAt'>): Promise<Request> => {
     try {
       await ensureAuthSession();
+      const dbRequest = mapRequestToDB(request);
       const { data, error } = await supabase
         .from('requests')
-        .insert(request)
+        .insert(dbRequest)
         .select()
         .single();
 
       if (error) throw error;
-      return data;
+      return mapRequestFromDB(data);
     } catch (error) {
       handleError(error, 'Create Request');
       throw error;
@@ -1074,15 +1125,16 @@ export const requestsApi = {
   update: async (id: string, updates: Partial<Request>): Promise<Request> => {
     try {
       await ensureAuthSession();
+      const dbUpdates = mapRequestToDB(updates);
       const { data, error } = await supabase
         .from('requests')
-        .update(updates)
+        .update(dbUpdates)
         .eq('id', id)
         .select()
         .single();
 
       if (error) throw error;
-      return data;
+      return mapRequestFromDB(data);
     } catch (error) {
       handleError(error, `Update Request ${id}`);
       throw error;
