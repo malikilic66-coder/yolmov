@@ -50,6 +50,7 @@ const CustomerProfilePage: React.FC = () => {
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
+  const [showProfileSavedModal, setShowProfileSavedModal] = useState(false);
   const [form, setForm] = useState<Customer>({} as Customer);
   const [orders, setOrders] = useState<typeof MOCK_ORDERS>([]);
   
@@ -128,7 +129,7 @@ const CustomerProfilePage: React.FC = () => {
   const [showAddAddress, setShowAddAddress] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [favorites, setFavorites] = useState(MOCK_FAVORITES);
-  const [isEditing, setIsEditing] = useState(false);
+  // NOT: isEditing kaldırıldı, editing kullanılacak
   
   // Address Form
   const [addressForm, setAddressForm] = useState({ label: '', type: 'home', address: '', city: '', district: '' });
@@ -157,11 +158,13 @@ const CustomerProfilePage: React.FC = () => {
   const handleSave = async () => {
     try {
       if (!customer?.id) return;
-      
+
       await supabaseApi.customers.update(customer.id, form);
       setCustomer(form);
-      setIsEditing(false);
-      showToast('Profil bilgileriniz güncellendi!', 'success');
+      setEditing(false); // Kaydet sonrası düzenleme modunu kapat
+      setShowProfileSavedModal(true); // Merkez modalını aç
+      // 3 sn sonra otomatik kapat
+      setTimeout(() => setShowProfileSavedModal(false), 3000);
     } catch (error) {
       console.error('❌ Profil güncellenemedi:', error);
       showToast('Profil güncellenirken hata oluştu. Lütfen tekrar deneyin.', 'error');
@@ -260,6 +263,22 @@ const CustomerProfilePage: React.FC = () => {
 
   return (
     <div className="min-h-[calc(100vh-80px)] bg-gray-50 py-8 px-4 md:px-8">
+      {showProfileSavedModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div className="relative bg-white rounded-2xl shadow-xl p-8 w-[90%] max-w-md text-center animate-fade-in">
+            <div className="mx-auto mb-4 w-14 h-14 rounded-full bg-green-100 flex items-center justify-center">
+              <Check size={32} className="text-green-600" />
+            </div>
+            <h4 className="text-lg font-bold text-gray-900 mb-2">Profil Güncellendi</h4>
+            <p className="text-sm text-gray-600 mb-6">Profil bilgileriniz başarıyla kaydedildi.</p>
+            <button
+              onClick={() => setShowProfileSavedModal(false)}
+              className="px-6 py-3 rounded-xl bg-brand-orange text-white font-bold text-sm hover:bg-brand-lightOrange transition-colors shadow"
+            >Tamam</button>
+          </div>
+        </div>
+      )}
       <div className="max-w-6xl mx-auto">
         <div className="flex flex-col md:flex-row md:items-start gap-8">
           {/* Left Column: Profile Card */}
