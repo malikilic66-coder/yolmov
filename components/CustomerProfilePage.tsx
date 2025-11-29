@@ -30,9 +30,17 @@ const Toast: React.FC<{ message: string; type: 'success' | 'error'; onClose: () 
 };
 
 // Mock Data for Extended Features - ORDERS artık state'ten geliyor
-const MOCK_ORDERS_TEMPLATE = [
-  { id: 'REQ-4521', service: 'Çekici Hizmeti', provider: 'Kurtarma Ekibi A.Ş.', date: '18 Kas 2025 14:35', status: 'Tamamlandı', amount: 850, from: 'Kadıköy, İstanbul', to: 'Maltepe Servis', rating: 5 }
-];
+interface OrderDisplay {
+  id: string;
+  service: string;
+  provider: string;
+  date: string;
+  status: string;
+  amount: number;
+  from: string;
+  to: string | null;
+  rating: number | null;
+}
 
 // Favoriler Supabase'den yüklenecek
 interface FavoriteDisplay {
@@ -43,8 +51,6 @@ interface FavoriteDisplay {
   phone?: string;
 }
 
-// Kayıtlı adresler Supabase'den yüklenecek
-
 const CustomerProfilePage: React.FC = () => {
   const navigate = useNavigate();
   
@@ -53,7 +59,7 @@ const CustomerProfilePage: React.FC = () => {
   const [editing, setEditing] = useState(false);
   const [showProfileSavedModal, setShowProfileSavedModal] = useState(false);
   const [form, setForm] = useState<Customer>({} as Customer);
-  const [orders, setOrders] = useState<typeof MOCK_ORDERS>([]);
+  const [orders, setOrders] = useState<OrderDisplay[]>([]);
   
   // Toast notification state
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -163,7 +169,7 @@ const CustomerProfilePage: React.FC = () => {
           id: row.partner_id,
           name: row.partners?.name || 'Partner',
           rating: row.partners?.rating,
-          services: (row.partners?.services || []).join(', '),
+          services: (row.partners?.service_types || []).join(', '),
           phone: row.partners?.phone
         }));
         setFavorites(mapped);
@@ -184,6 +190,20 @@ const CustomerProfilePage: React.FC = () => {
       } catch (err) {
         console.warn('⚠️ Adresler alınamadı:', err);
       }
+      // 6. Bildirim tercihlerini çek
+      try {
+        const prefs = await supabaseApi.notificationPreferences.getByCustomerId(userId);
+        setNotificationPrefsId(prefs.id);
+        setNotifications({
+          emailEnabled: prefs.emailEnabled,
+          pushEnabled: prefs.pushEnabled,
+          orderUpdates: prefs.orderUpdates,
+          promotions: prefs.promotions,
+          newsletter: prefs.newsletter,
+        });
+      } catch (err) {
+        console.warn('⚠️ Bildirim tercihleri alınamadı:', err);
+      }
     } catch (error) {
       console.error('❌ Müşteri bilgileri yüklenemedi:', error);
       navigate('/giris/musteri');
@@ -194,7 +214,7 @@ const CustomerProfilePage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'profile' | 'orders' | 'favorites' | 'addresses' | 'notifications' | 'security'>('profile');
   
   // Modals
-  const [selectedOrder, setSelectedOrder] = useState<typeof MOCK_ORDERS[0] | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<OrderDisplay | null>(null);
   const [selectedFavorite, setSelectedFavorite] = useState<FavoriteDisplay | null>(null);
   const [showAddAddress, setShowAddAddress] = useState(false);
   const [addresses, setAddresses] = useState<Array<{id:string; label:string; type:'home'|'work'; address:string; city:string; district:string}>>([]);
@@ -205,15 +225,15 @@ const CustomerProfilePage: React.FC = () => {
   // Address Form
   const [addressForm, setAddressForm] = useState({ label: '', type: 'home', address: '', city: '', district: '' });
   
-  // Notification Preferences
+  // Notification Preferences - DB'den yüklenecek
   const [notifications, setNotifications] = useState({
-    sms: true,
-    email: true,
-    push: true,
+    emailEnabled: true,
+    pushEnabled: true,
     orderUpdates: true,
     promotions: false,
     newsletter: true
   });
+  const [notificationPrefsId, setNotificationPrefsId] = useState<string | null>(null);
 
   // Password Change
   const [passwordForm, setPasswordForm] = useState({ current: '', new: '', confirm: '' });
@@ -281,6 +301,24 @@ const CustomerProfilePage: React.FC = () => {
       setFavorites(prev => prev.filter(f => f.id !== partnerId));
     } catch (err) {
       showToast('Favori silinirken hata oluştu', 'error');
+    }
+  };
+
+  const handleToggleNotification = async (key: keyof typeof notifications) => {
+    if (!customer?.id) return;
+    
+    const newValue = !notifications[key];
+    setNotifications(prev => ({ ...prev, [key]: newValue }));
+    
+    try {
+      await supabaseApi.notificationPreferences.update(customer.id, {
+        [key]: newValue
+      });
+    } catch (err) {
+      console.error('❌ Bildirim tercihi güncellenemedi:', err);
+      // Hata durumunda geri al
+      setNotifications(prev => ({ ...prev, [key]: !newValue }));
+      showToast('Bildirim tercihi güncellenirken hata oluştu', 'error');
     }
   };
 
@@ -522,7 +560,7 @@ const CustomerProfilePage: React.FC = () => {
                 ) : orders.length === 0 ? (
                   <p className="text-center text-gray-500 py-8">Henüz talep oluşturmadınız.</p>
                 ) : (
-                  orders.map(order => (
+                  orders.map((order: OrderDisplay) => (
                     <div key={order.id} className="p-5 rounded-xl border border-gray-100 hover:border-brand-orange hover:shadow-md transition-all cursor-pointer group" onClick={() => setSelectedOrder(order)}>
                       <div className="flex items-start justify-between mb-3">
                         <div>
@@ -624,9 +662,8 @@ const CustomerProfilePage: React.FC = () => {
                   <h4 className="font-bold text-gray-800 mb-4">Bildirim Kanalları</h4>
                   <div className="space-y-4">
                     {[
-                      { key: 'sms', label: 'SMS Bildirimleri', desc: 'Önemli işlem bildirimleri' },
-                      { key: 'email', label: 'E-Posta Bildirimleri', desc: 'Detaylı bilgilendirmeler' },
-                      { key: 'push', label: 'Push Bildirimleri', desc: 'Anlık bildirimler' }
+                      { key: 'emailEnabled' as const, label: 'E-Posta Bildirimleri', desc: 'Detaylı bilgilendirmeler' },
+                      { key: 'pushEnabled' as const, label: 'Push Bildirimleri', desc: 'Anlık bildirimler' }
                     ].map(item => (
                       <div key={item.key} className="flex items-center justify-between p-4 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors">
                         <div>
@@ -634,10 +671,10 @@ const CustomerProfilePage: React.FC = () => {
                           <p className="text-xs text-gray-500">{item.desc}</p>
                         </div>
                         <button
-                          onClick={() => setNotifications(prev => ({ ...prev, [item.key]: !prev[item.key as keyof typeof prev] }))}
-                          className={`w-12 h-6 rounded-full transition-all ${notifications[item.key as keyof typeof notifications] ? 'bg-green-500' : 'bg-gray-300'} relative`}
+                          onClick={() => handleToggleNotification(item.key)}
+                          className={`w-12 h-6 rounded-full transition-all ${notifications[item.key] ? 'bg-green-500' : 'bg-gray-300'} relative`}
                         >
-                          <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${notifications[item.key as keyof typeof notifications] ? 'right-0.5' : 'left-0.5'}`}></div>
+                          <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${notifications[item.key] ? 'right-0.5' : 'left-0.5'}`}></div>
                         </button>
                       </div>
                     ))}
@@ -647,9 +684,9 @@ const CustomerProfilePage: React.FC = () => {
                   <h4 className="font-bold text-gray-800 mb-4">Bildirim Türleri</h4>
                   <div className="space-y-4">
                     {[
-                      { key: 'orderUpdates', label: 'Talep Güncellemeleri', desc: 'Sipariş durum değişiklikleri' },
-                      { key: 'promotions', label: 'Kampanyalar ve Fırsatlar', desc: 'Özel indirimler' },
-                      { key: 'newsletter', label: 'Haber Bülteni', desc: 'Yeni özellikler ve haberler' }
+                      { key: 'orderUpdates' as const, label: 'Talep Güncellemeleri', desc: 'Sipariş durum değişiklikleri' },
+                      { key: 'promotions' as const, label: 'Kampanyalar ve Fırsatlar', desc: 'Özel indirimler' },
+                      { key: 'newsletter' as const, label: 'Haber Bülteni', desc: 'Yeni özellikler ve haberler' }
                     ].map(item => (
                       <div key={item.key} className="flex items-center justify-between p-4 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors">
                         <div>
@@ -657,10 +694,10 @@ const CustomerProfilePage: React.FC = () => {
                           <p className="text-xs text-gray-500">{item.desc}</p>
                         </div>
                         <button
-                          onClick={() => setNotifications(prev => ({ ...prev, [item.key]: !prev[item.key as keyof typeof prev] }))}
-                          className={`w-12 h-6 rounded-full transition-all ${notifications[item.key as keyof typeof notifications] ? 'bg-green-500' : 'bg-gray-300'} relative`}
+                          onClick={() => handleToggleNotification(item.key)}
+                          className={`w-12 h-6 rounded-full transition-all ${notifications[item.key] ? 'bg-green-500' : 'bg-gray-300'} relative`}
                         >
-                          <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${notifications[item.key as keyof typeof notifications] ? 'right-0.5' : 'left-0.5'}`}></div>
+                          <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${notifications[item.key] ? 'right-0.5' : 'left-0.5'}`}></div>
                         </button>
                       </div>
                     ))}

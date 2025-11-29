@@ -15,6 +15,7 @@ import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from './supabase';
 import type {
   Customer,
   CustomerAddress,
+  CustomerNotificationPreferences,
   AdminUser,
   Request,
   Offer,
@@ -843,6 +844,125 @@ export const addressesApi = {
       throw error;
     }
   }
+};
+
+// ============================================
+// NOTIFICATION PREFERENCES API
+// ============================================
+
+export const notificationPreferencesApi = {
+  /**
+   * Müşterinin bildirim tercihlerini getir
+   * Eğer kayıt yoksa, varsayılan değerlerle oluştur
+   */
+  getByCustomerId: async (customerId: string): Promise<CustomerNotificationPreferences> => {
+    try {
+      await ensureAuthSession();
+      
+      // Önce mevcut tercihleri kontrol et
+      const { data, error } = await supabase
+        .from('customer_notification_preferences')
+        .select('*')
+        .eq('customer_id', customerId)
+        .single();
+      
+      if (error && error.code !== 'PGRST116') { // PGRST116 = no rows
+        throw error;
+      }
+      
+      // Eğer kayıt varsa, snake_case → camelCase dönüşümü
+      if (data) {
+        return {
+          id: data.id,
+          customerId: data.customer_id,
+          emailEnabled: data.email_enabled,
+          pushEnabled: data.push_enabled,
+          orderUpdates: data.order_updates,
+          promotions: data.promotions,
+          newsletter: data.newsletter,
+          createdAt: data.created_at,
+          updatedAt: data.updated_at,
+        };
+      }
+      
+      // Kayıt yoksa, varsayılan değerlerle oluştur
+      const defaultPrefs = {
+        customer_id: customerId,
+        email_enabled: true,
+        push_enabled: true,
+        order_updates: true,
+        promotions: false,
+        newsletter: true,
+      };
+      
+      const { data: newData, error: insertError } = await supabase
+        .from('customer_notification_preferences')
+        .insert(defaultPrefs)
+        .select()
+        .single();
+      
+      if (insertError) throw insertError;
+      
+      return {
+        id: newData.id,
+        customerId: newData.customer_id,
+        emailEnabled: newData.email_enabled,
+        pushEnabled: newData.push_enabled,
+        orderUpdates: newData.order_updates,
+        promotions: newData.promotions,
+        newsletter: newData.newsletter,
+        createdAt: newData.created_at,
+        updatedAt: newData.updated_at,
+      };
+    } catch (error) {
+      handleError(error, 'Get Notification Preferences');
+      throw error;
+    }
+  },
+
+  /**
+   * Bildirim tercihlerini güncelle
+   */
+  update: async (
+    customerId: string,
+    updates: Partial<Omit<CustomerNotificationPreferences, 'id' | 'customerId' | 'createdAt' | 'updatedAt'>>
+  ): Promise<CustomerNotificationPreferences> => {
+    try {
+      await ensureAuthSession();
+      
+      // camelCase → snake_case dönüşümü
+      const dbUpdates: any = {};
+      if (updates.emailEnabled !== undefined) dbUpdates.email_enabled = updates.emailEnabled;
+      if (updates.pushEnabled !== undefined) dbUpdates.push_enabled = updates.pushEnabled;
+      if (updates.orderUpdates !== undefined) dbUpdates.order_updates = updates.orderUpdates;
+      if (updates.promotions !== undefined) dbUpdates.promotions = updates.promotions;
+      if (updates.newsletter !== undefined) dbUpdates.newsletter = updates.newsletter;
+      
+      const { data, error } = await supabase
+        .from('customer_notification_preferences')
+        .update(dbUpdates)
+        .eq('customer_id', customerId)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      return {
+        id: data.id,
+        customerId: data.customer_id,
+        emailEnabled: data.email_enabled,
+        pushEnabled: data.push_enabled,
+        orderUpdates: data.order_updates,
+        promotions: data.promotions,
+        newsletter: data.newsletter,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at,
+      };
+    } catch (error) {
+      handleError(error, 'Update Notification Preferences');
+      throw error;
+    }
+  },
 };
 
 // ============================================
@@ -2049,6 +2169,7 @@ const supabaseApi = {
   analytics: analyticsApi,
   favorites: favoritesApi,
   addresses: addressesApi,
+  notificationPreferences: notificationPreferencesApi,
   documents: partnerDocumentsApi,
   storage: {
     /**

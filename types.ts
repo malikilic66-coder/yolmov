@@ -428,3 +428,21 @@ export interface CompletedJob {
   vehiclePlate: string;
   status: 'completed' | 'cancelled' | 'refunded';
 }
+
+// ============================================
+// NOTIFICATION PREFERENCES TYPES
+// ============================================
+
+export interface CustomerNotificationPreferences {
+  id: string;
+  customerId: string;
+  // Bildirim Kanalları
+  emailEnabled: boolean;
+  pushEnabled: boolean;
+  // Bildirim Türleri
+  orderUpdates: boolean;
+  promotions: boolean;
+  newsletter: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
