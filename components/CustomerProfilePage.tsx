@@ -427,9 +427,10 @@ const CustomerProfilePage: React.FC = () => {
       )}
       <div className="max-w-6xl mx-auto">
         <div className="flex flex-col md:flex-row md:items-start gap-8">
-          {/* Left Column: Profile Card */}
-          <div className="md:w-1/4 w-full">
-            <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 sticky top-24">
+          {/* Left Column: Profile Card + CTA Card */}
+          <div className="md:w-1/4 w-full space-y-6">
+            {/* Profile Card */}
+            <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
               <div className="flex flex-col items-center text-center">
                 <div className="relative w-24 h-24 rounded-full bg-gradient-to-br from-orange-200 to-orange-400 flex items-center justify-center text-white text-3xl font-bold shadow-inner">
                   {customer.avatarUrl ? (
@@ -456,21 +457,28 @@ const CustomerProfilePage: React.FC = () => {
                     >
                       Tekliflerimi Gör
                     </button>
-                  
-                  {/* Çekici Talep Et CTA */}
-                  <button
-                    onClick={() => navigate('/teklif')}
-                    className="w-full py-3 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white text-sm font-bold hover:from-orange-600 hover:to-orange-700 transition-all shadow-lg flex items-center justify-center gap-2"
-                  >
-                    <Package size={16} />
-                    Çekici Talep Et
-                  </button>
-
                   <div className="flex gap-2">
                     <button onClick={handleBackHome} className="flex-1 py-2.5 rounded-xl bg-gray-100 text-gray-700 text-xs font-bold hover:bg-gray-200 transition-colors">Ana Sayfa</button>
                     <button onClick={handleLogout} className="flex-1 py-2.5 rounded-xl bg-red-50 text-red-600 text-xs font-bold hover:bg-red-100 transition-colors flex items-center justify-center gap-1"><LogOut size={14}/> Çıkış</button>
                   </div>
                 </div>
+              </div>
+            </div>
+
+            {/* Çekici Talep Et CTA Card */}
+            <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-3xl p-6 shadow-sm border border-orange-200">
+              <div className="text-center">
+                <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center shadow-lg mb-4">
+                  <Package size={28} className="text-white" />
+                </div>
+                <h3 className="text-lg font-bold text-gray-900 mb-2">Yol Yardım İhtiyacınız mı Var?</h3>
+                <p className="text-sm text-gray-600 mb-4">Hızlı ve güvenilir çekici hizmeti için hemen teklif alın!</p>
+                <button
+                  onClick={() => navigate('/teklif')}
+                  className="w-full py-3 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white font-bold hover:from-orange-600 hover:to-orange-700 transition-all shadow-lg hover:shadow-xl"
+                >
+                  Çekici Talep Et
+                </button>
               </div>
             </div>
           </div>
