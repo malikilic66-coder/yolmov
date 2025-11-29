@@ -120,7 +120,7 @@ const CustomerProfilePage: React.FC = () => {
         const favRows = await supabaseApi.favorites.getByCustomerId(userId);
         const mapped = favRows.map(row => ({
           id: row.partner_id,
-          name: row.partners?.company_name || 'Partner',
+          name: row.partners?.name || 'Partner',
           rating: row.partners?.rating,
           services: (row.partners?.services || []).join(', '),
           phone: row.partners?.phone

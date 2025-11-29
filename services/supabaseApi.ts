@@ -33,13 +33,19 @@ import type {
 } from '../types';
 
 // Partner interface (types.ts'de eksik olduğu için burada tanımlıyoruz)
+// Gerçek partners tablosu şeması (schema.sql'e göre)
 interface Partner {
   id: string;
-  company_name: string;
+  name: string;
   email: string;
   phone: string;
-  services?: string[];
   rating?: number;
+  completed_jobs?: number;
+  credits?: number;
+  status?: string;
+  city?: string;
+  district?: string;
+  service_types?: string[]; // ENUM[] service_type
   created_at: string;
   updated_at?: string;
 }
@@ -705,7 +711,7 @@ export const favoritesApi = {
       await ensureAuthSession();
       const { data, error } = await supabase
         .from('customer_favorites')
-        .select('id, customer_id, partner_id, created_at, partners:partners(id, name, phone, services, rating)')
+        .select('id, customer_id, partner_id, created_at, partners:partners(id, name, phone, rating, city, district, service_types)')
         .eq('customer_id', customerId)
         .order('created_at', { ascending: false });
       if (error) throw error;
@@ -826,6 +832,7 @@ export const addressesApi = {
 export const requestsApi = {
   getAll: async (): Promise<Request[]> => {
     try {
+      await ensureAuthSession();
       const { data, error } = await supabase
         .from('requests')
         .select('*')
@@ -841,6 +848,7 @@ export const requestsApi = {
 
   getByCustomerId: async (customerId: string): Promise<Request[]> => {
     try {
+      await ensureAuthSession();
       const { data, error } = await supabase
         .from('requests')
         .select('*')
@@ -857,6 +865,7 @@ export const requestsApi = {
 
   getByPartnerId: async (partnerId: string): Promise<Request[]> => {
     try {
+      await ensureAuthSession();
       const { data, error } = await supabase
         .from('requests')
         .select('*')
@@ -873,6 +882,7 @@ export const requestsApi = {
 
   getOpen: async (): Promise<Request[]> => {
     try {
+      await ensureAuthSession();
       const { data, error } = await supabase
         .from('requests')
         .select('*')
@@ -889,6 +899,7 @@ export const requestsApi = {
 
   getById: async (id: string): Promise<Request | null> => {
     try {
+      await ensureAuthSession();
       const { data, error } = await supabase
         .from('requests')
         .select('*')
@@ -905,6 +916,7 @@ export const requestsApi = {
 
   create: async (request: Omit<Request, 'id' | 'createdAt'>): Promise<Request> => {
     try {
+      await ensureAuthSession();
       const { data, error } = await supabase
         .from('requests')
         .insert(request)
@@ -921,6 +933,7 @@ export const requestsApi = {
 
   update: async (id: string, updates: Partial<Request>): Promise<Request> => {
     try {
+      await ensureAuthSession();
       const { data, error } = await supabase
         .from('requests')
         .update(updates)
@@ -970,6 +983,7 @@ export const requestsApi = {
 
   delete: async (id: string): Promise<void> => {
     try {
+      await ensureAuthSession();
       const { error } = await supabase
         .from('requests')
         .delete()
@@ -2015,6 +2029,32 @@ const supabaseApi = {
   analytics: analyticsApi,
   favorites: favoritesApi,
   addresses: addressesApi,
+  storage: {
+    /**
+     * Müşteri hasar fotoğrafını Supabase Storage'a yükler
+     * Bucket: request-photos (PUBLIC olmalı)
+     * Dönüş: public URL
+     */
+    uploadCustomerPhoto: async (file: File, customerId?: string | null): Promise<string> => {
+      try {
+        const safeName = file.name.replace(/[^a-zA-Z0-9_.-]/g, '_');
+        const folder = customerId || 'anon';
+        const path = `${folder}/${Date.now()}_${safeName}`;
+        // Bucket var mı kontrolü yapamayız (client tarafında listeleyip yakalayacağız)
+        const { data, error } = await supabase.storage
+          .from('request-photos')
+          .upload(path, file, { upsert: false });
+        if (error) throw error;
+        const { data: publicData } = supabase.storage
+          .from('request-photos')
+          .getPublicUrl(path);
+        return publicData.publicUrl;
+      } catch (error: any) {
+        handleError(error, 'Upload Customer Photo');
+        throw error;
+      }
+    }
+  },
 };
 
 export { supabaseApi };
