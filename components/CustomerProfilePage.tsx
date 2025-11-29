@@ -456,6 +456,16 @@ const CustomerProfilePage: React.FC = () => {
                     >
                       Tekliflerimi Gör
                     </button>
+                  
+                  {/* Çekici Talep Et CTA */}
+                  <button
+                    onClick={() => navigate('/teklif')}
+                    className="w-full py-3 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white text-sm font-bold hover:from-orange-600 hover:to-orange-700 transition-all shadow-lg flex items-center justify-center gap-2"
+                  >
+                    <Package size={16} />
+                    Çekici Talep Et
+                  </button>
+
                   <div className="flex gap-2">
                     <button onClick={handleBackHome} className="flex-1 py-2.5 rounded-xl bg-gray-100 text-gray-700 text-xs font-bold hover:bg-gray-200 transition-colors">Ana Sayfa</button>
                     <button onClick={handleLogout} className="flex-1 py-2.5 rounded-xl bg-red-50 text-red-600 text-xs font-bold hover:bg-red-100 transition-colors flex items-center justify-center gap-1"><LogOut size={14}/> Çıkış</button>
@@ -545,23 +555,6 @@ const CustomerProfilePage: React.FC = () => {
                       {form.city && CITIES_WITH_DISTRICTS[form.city].map(d => <option key={d} value={d}>{d}</option>)}
                     </select>
                   </div>
-                </div>
-              </div>
-
-              {/* Çekici Talep Et CTA */}
-              <div className="mt-8 p-6 rounded-2xl bg-gradient-to-br from-orange-50 to-orange-100 border border-orange-200">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="font-bold text-gray-900 text-lg mb-1">Yol Yardım İhtiyacınız mı Var?</h4>
-                    <p className="text-sm text-gray-600">Hızlı ve güvenilir çekici hizmeti için hemen teklif alın!</p>
-                  </div>
-                  <button
-                    onClick={() => navigate('/teklif')}
-                    className="px-6 py-3 bg-brand-orange text-white rounded-xl font-bold hover:bg-brand-lightOrange transition-all shadow-lg hover:shadow-xl flex items-center gap-2 whitespace-nowrap"
-                  >
-                    <Package size={18} />
-                    Çekici Talep Et
-                  </button>
                 </div>
               </div>
             </div>
