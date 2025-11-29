@@ -52,6 +52,25 @@ export interface Provider {
   image: string;
 }
 
+// Favori sağlayıcılar için hafif partner özeti
+export interface FavoritePartner {
+  id: string;
+  name: string;
+  rating?: number;
+  services?: string[];
+  phone?: string;
+  image?: string;
+  location?: string;
+}
+
+export interface CustomerFavorite {
+  id: string;          // favorite row id
+  customerId: string;  // customer (auth user) id
+  partnerId: string;   // partner id
+  createdAt: string;   // eklenme zamanı
+  partner?: FavoritePartner; // join edilmiş partner bilgisi
+}
+
 // ============================================
 // PARTNER (B2B) TYPES
 // ============================================
@@ -86,6 +105,17 @@ export interface Customer {
   city?: string;
   district?: string;
   createdAt?: string;
+
+export interface CustomerAddress {
+  id: string;
+  customer_id: string;
+  label: string;
+  type: 'home' | 'work';
+  address: string;
+  city: string;
+  district: string;
+  created_at?: string;
+}
 }
 
 // B2C Request (Talep) yapısı - TEK KAYNAK
