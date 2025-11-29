@@ -83,6 +83,22 @@ const generateId = () => {
   return crypto.randomUUID();
 };
 
+/**
+ * Supabase client'a mevcut kullanıcı oturumunu set eder.
+ * RAW auth ile localStorage'a yazılan token'ı SDK'ya aktarır.
+ */
+const ensureAuthSession = async () => {
+  try {
+    const sessionStr = localStorage.getItem('yolmov-auth-session');
+    if (!sessionStr) return;
+    const s = JSON.parse(sessionStr);
+    if (!s?.access_token || !s?.refresh_token) return;
+    await supabase.auth.setSession({ access_token: s.access_token, refresh_token: s.refresh_token });
+  } catch (e) {
+    console.warn('ensureAuthSession failed', e);
+  }
+};
+
 // ============================================
 // AUTHENTICATION
 // ============================================
@@ -686,9 +702,10 @@ export const partnersApi = {
 export const favoritesApi = {
   getByCustomerId: async (customerId: string): Promise<CustomerFavoriteRow[]> => {
     try {
+      await ensureAuthSession();
       const { data, error } = await supabase
         .from('customer_favorites')
-        .select('id, customer_id, partner_id, created_at, partners:partners(id, company_name, phone, services, rating)')
+        .select('id, customer_id, partner_id, created_at, partners:partners(id, name, phone, services, rating)')
         .eq('customer_id', customerId)
         .order('created_at', { ascending: false });
       if (error) throw error;
@@ -700,6 +717,7 @@ export const favoritesApi = {
   },
   add: async (customerId: string, partnerId: string): Promise<void> => {
     try {
+      await ensureAuthSession();
       const { error } = await supabase
         .from('customer_favorites')
         .insert({ customer_id: customerId, partner_id: partnerId });
@@ -711,6 +729,7 @@ export const favoritesApi = {
   },
   remove: async (customerId: string, partnerId: string): Promise<void> => {
     try {
+      await ensureAuthSession();
       const { error } = await supabase
         .from('customer_favorites')
         .delete()
@@ -731,6 +750,7 @@ export const favoritesApi = {
 export const addressesApi = {
   getByCustomerId: async (customerId: string): Promise<CustomerAddress[]> => {
     try {
+      await ensureAuthSession();
       const { data, error } = await supabase
         .from('customer_addresses')
         .select('*')
@@ -754,6 +774,7 @@ export const addressesApi = {
   },
   add: async (customerId: string, data: Omit<CustomerAddress, 'id' | 'customer_id' | 'created_at'>): Promise<CustomerAddress> => {
     try {
+      await ensureAuthSession();
       const insertData = {
         customer_id: customerId,
         label: data.label,
@@ -785,6 +806,7 @@ export const addressesApi = {
   },
   remove: async (addressId: string): Promise<void> => {
     try {
+      await ensureAuthSession();
       const { error } = await supabase
         .from('customer_addresses')
         .delete()
