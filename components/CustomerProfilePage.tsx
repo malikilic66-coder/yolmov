@@ -99,17 +99,58 @@ const CustomerProfilePage: React.FC = () => {
       try {
         const requestHistory = await supabaseApi.requests.getByCustomerId(userId);
         if (requestHistory && requestHistory.length > 0) {
-          const formattedOrders = requestHistory.map((req: any) => ({
-            id: req.id,
-            service: req.serviceType || req.service_type || 'Çekici',
-            provider: req.assignedPartnerName || 'Partner',
-            date: new Date(req.createdAt || req.created_at).toLocaleString('tr-TR'),
-            status: req.status === 'completed' ? 'Tamamlandı' : req.status === 'cancelled' ? 'İptal' : 'Devam Ediyor',
-            amount: req.amount || 0,
-            from: req.fromLocation || 'Bilinmiyor',
-            to: req.toLocation || null,
-            rating: null
-          }));
+          const formattedOrders = requestHistory.map((req: any) => {
+            // Tarih formatı düzelt
+            let formattedDate = 'Bilinmiyor';
+            try {
+              const dateValue = req.created_at || req.createdAt;
+              if (dateValue) {
+                const date = new Date(dateValue);
+                if (!isNaN(date.getTime())) {
+                  formattedDate = new Intl.DateTimeFormat('tr-TR', {
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  }).format(date);
+                }
+              }
+            } catch (e) {
+              console.warn('Tarih formatlanamadı:', e);
+            }
+            
+            // Servis tipini çevir
+            const serviceTypeMap: Record<string, string> = {
+              'cekici': 'Çekici Hizmeti',
+              'aku': 'Akü Takviyesi',
+              'lastik': 'Lastik Değişimi',
+              'yakit': 'Yakıt Desteği',
+              'anahtar': 'Anahtar Çilingir'
+            };
+            const serviceType = req.service_type || req.serviceType || 'cekici';
+            
+            // Status çevir
+            const statusMap: Record<string, string> = {
+              'open': 'Açık',
+              'matched': 'Eşleşti',
+              'in_progress': 'Devam Ediyor',
+              'completed': 'Tamamlandı',
+              'cancelled': 'İptal Edildi'
+            };
+            
+            return {
+              id: req.id,
+              service: serviceTypeMap[serviceType] || 'Yol Yardım',
+              provider: req.assigned_partner_name || req.assignedPartnerName || 'Bekliyor',
+              date: formattedDate,
+              status: statusMap[req.status] || req.status || 'Açık',
+              amount: req.amount || 0,
+              from: req.from_location || req.fromLocation || 'Başlangıç',
+              to: req.to_location || req.toLocation || null,
+              rating: null
+            };
+          });
           setOrders(formattedOrders);
         }
       } catch (err) {
