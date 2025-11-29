@@ -48,6 +48,17 @@ const QuoteWizard: React.FC = () => {
     const saved = localStorage.getItem('yolmov_customer');
     return saved ? JSON.parse(saved) : null;
   }, []);
+  React.useEffect(() => {
+    // Oturum tokenını Supabase SDK'ya aktarıp RLS hatalarını önle
+    (async () => {
+      try {
+        await supabaseApi.auth.getSession();
+        // Ayrıca storage ve requests çağrılarında ensureAuthSession zaten var
+      } catch (e) {
+        console.warn('Auth session prepare failed', e);
+      }
+    })();
+  }, []);
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, boolean>>({});
@@ -1113,12 +1124,20 @@ const QuoteWizard: React.FC = () => {
             </button>
 
             <button 
-               onClick={handleNext}
-               className="flex items-center gap-2 px-8 py-3 bg-brand-orange text-white rounded-xl font-bold shadow-lg shadow-orange-200 hover:bg-brand-lightOrange hover:-translate-y-0.5 transition-all disabled:opacity-70"
-               disabled={isSubmitting}
+              onClick={handleNext}
+              className={`flex items-center gap-2 px-8 py-3 rounded-xl font-bold shadow-lg transition-all disabled:opacity-70 ${
+                customer && customer.id 
+                 ? 'bg-brand-orange text-white shadow-orange-200 hover:bg-brand-lightOrange hover:-translate-y-0.5' 
+                 : 'bg-gray-300 text-gray-700 cursor-pointer'
+              }`}
+              disabled={isSubmitting}
             >
-               {isSubmitting ? 'Gönderiliyor...' : currentStep === 4 ? 'Teklif Al' : 'Devam Et'}
-               {!isSubmitting && <ChevronRight size={18} />}
+              {isSubmitting 
+                ? 'Gönderiliyor...' 
+                : currentStep === 4 
+                 ? (customer && customer.id ? 'Teklif Al' : 'Giriş Yap ve Devam Et') 
+                 : 'Devam Et'}
+              {!isSubmitting && <ChevronRight size={18} />}
             </button>
          </div>
       )}
