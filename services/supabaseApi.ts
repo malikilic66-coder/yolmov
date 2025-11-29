@@ -55,7 +55,7 @@ interface CustomerFavoriteRow {
   customer_id: string;
   partner_id: string;
   created_at: string;
-  partners?: {
+  partners: {
     id: string;
     name: string;
     phone: string;
@@ -719,11 +719,23 @@ export const favoritesApi = {
       await ensureAuthSession();
       const { data, error } = await supabase
         .from('customer_favorites')
-        .select('id, customer_id, partner_id, created_at, partners:partners(id, name, phone, rating, city, district, service_types)')
+        .select('id, customer_id, partner_id, created_at, partners!partner_id(id, name, phone, rating, city, district, service_types)')
         .eq('customer_id', customerId)
         .order('created_at', { ascending: false });
       if (error) throw error;
-      return (data || []) as CustomerFavoriteRow[];
+      
+      // Supabase join always returns array, we need to map to single object
+      const mapped = (data || []).map((item: any) => ({
+        id: item.id,
+        customer_id: item.customer_id,
+        partner_id: item.partner_id,
+        created_at: item.created_at,
+        partners: Array.isArray(item.partners) && item.partners.length > 0 
+          ? item.partners[0] 
+          : null
+      }));
+      
+      return mapped as CustomerFavoriteRow[];
     } catch (error) {
       handleError(error, 'Get Favorites');
       return [];
@@ -2037,6 +2049,7 @@ const supabaseApi = {
   analytics: analyticsApi,
   favorites: favoritesApi,
   addresses: addressesApi,
+  documents: partnerDocumentsApi,
   storage: {
     /**
      * Müşteri hasar fotoğrafını Supabase Storage'a yükler
@@ -2080,6 +2093,53 @@ const supabaseApi = {
         console.error('❌ Upload failed:', error);
         handleError(error, 'Upload Customer Photo');
         throw error;
+      }
+    },
+    
+    /**
+     * Partner belgesi yükle
+     * Bucket: partner-documents (PUBLIC olmalı)
+     * Dönüş: { success: boolean, url?: string, error?: string }
+     */
+    uploadPartnerDocument: async (
+      file: File,
+      partnerId: string,
+      requestId: string | null,
+      documentType: string
+    ): Promise<{ success: boolean; url?: string; error?: string }> => {
+      try {
+        await ensureAuthSession();
+        
+        const safeName = file.name.replace(/[^a-zA-Z0-9_.-]/g, '_');
+        const timestamp = Date.now();
+        const path = requestId 
+          ? `${partnerId}/${requestId}/${timestamp}_${safeName}`
+          : `${partnerId}/${documentType}/${timestamp}_${safeName}`;
+        
+        console.log(`📤 Uploading partner document to: partner-documents/${path}`);
+        
+        const { data, error } = await supabase.storage
+          .from('partner-documents')
+          .upload(path, file, {
+            upsert: true,
+            contentType: file.type
+          });
+        
+        if (error) {
+          console.error('Partner document upload error:', error);
+          return { success: false, error: error.message };
+        }
+        
+        const { data: publicData } = supabase.storage
+          .from('partner-documents')
+          .getPublicUrl(path);
+        
+        console.log(`✅ Partner document uploaded: ${publicData.publicUrl}`);
+        
+        return { success: true, url: publicData.publicUrl };
+      } catch (error: any) {
+        console.error('❌ Partner document upload failed:', error);
+        return { success: false, error: error.message };
       }
     }
   },
