@@ -1,11 +1,12 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Customer } from '../types';
+import { Customer, Request } from '../types';
 import supabaseApi from '../services/supabaseApi';
 import { 
   Phone, Mail, MapPin, User, Edit3, Check, X, Calendar, ShieldCheck, LogOut,
   CreditCard, Bell, Lock, Heart, Home, Briefcase, MapPinned, Plus, Trash2,
-  Star, ChevronRight, Package, Eye, EyeOff, AlertCircle, CheckCircle2
+  Star, ChevronRight, Package, Eye, EyeOff, AlertCircle, CheckCircle2, Camera,
+  Truck, Clock, Car
 } from 'lucide-react';
 import { CITIES_WITH_DISTRICTS } from '../constants';
 
@@ -60,6 +61,7 @@ const CustomerProfilePage: React.FC = () => {
   const [showProfileSavedModal, setShowProfileSavedModal] = useState(false);
   const [form, setForm] = useState<Customer>({} as Customer);
   const [orders, setOrders] = useState<OrderDisplay[]>([]);
+  const [requests, setRequests] = useState<Request[]>([]); // Raw Request objects
   
   // Toast notification state
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -105,6 +107,9 @@ const CustomerProfilePage: React.FC = () => {
       try {
         const requestHistory = await supabaseApi.requests.getByCustomerId(userId);
         if (requestHistory && requestHistory.length > 0) {
+          // Raw requests'i sakla (modal için)
+          setRequests(requestHistory);
+          
           const formattedOrders = requestHistory.map((req: any) => {
             // Tarih formatı düzelt
             let formattedDate = 'Bilinmiyor';
@@ -214,7 +219,7 @@ const CustomerProfilePage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'profile' | 'orders' | 'favorites' | 'addresses' | 'notifications' | 'security'>('profile');
   
   // Modals
-  const [selectedOrder, setSelectedOrder] = useState<OrderDisplay | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<Request | null>(null);
   const [selectedFavorite, setSelectedFavorite] = useState<FavoriteDisplay | null>(null);
   const [showAddAddress, setShowAddAddress] = useState(false);
   const [addresses, setAddresses] = useState<Array<{id:string; label:string; type:'home'|'work'; address:string; city:string; district:string}>>([]);
@@ -278,6 +283,35 @@ const CustomerProfilePage: React.FC = () => {
 
   const handleViewOffers = () => {
     navigate('/musteri/teklifler');
+  };
+
+  const handleCancelRequest = async (requestId: string) => {
+    if (!confirm('Bu talebi iptal etmek istediğinizden emin misiniz?')) return;
+    
+    try {
+      const request = requests.find(r => r.id === requestId);
+      
+      // Eğer teklif verilmişse uyarı göster (şimdilik sadece bilgilendirme)
+      if (request?.assignedPartnerId) {
+        showToast('⚠️ Bu talebe teklif verilmiştir. Lütfen hizmet sağlayıcı ile görüşün.', 'error');
+        return;
+      }
+      
+      // Request status'ünü 'cancelled' yap
+      await supabaseApi.requests.update(requestId, { status: 'cancelled' });
+      
+      // Local state'i güncelle
+      setRequests(prev => prev.map(r => 
+        r.id === requestId ? { ...r, status: 'cancelled' as const } : r
+      ));
+      
+      showToast('Talebiniz başarıyla iptal edildi', 'success');
+      setSelectedOrder(null);
+      
+    } catch (err) {
+      console.error('❌ Talep iptal edilemedi:', err);
+      showToast('Talep iptal edilirken hata oluştu', 'error');
+    }
   };
 
   const handlePasswordChange = () => {
@@ -588,7 +622,10 @@ const CustomerProfilePage: React.FC = () => {
                   <p className="text-center text-gray-500 py-8">Henüz talep oluşturmadınız.</p>
                 ) : (
                   orders.map((order: OrderDisplay) => (
-                    <div key={order.id} className="p-5 rounded-xl border border-gray-100 hover:border-brand-orange hover:shadow-md transition-all cursor-pointer group" onClick={() => setSelectedOrder(order)}>
+                    <div key={order.id} className="p-5 rounded-xl border border-gray-100 hover:border-brand-orange hover:shadow-md transition-all cursor-pointer group" onClick={() => {
+                      const req = requests.find(r => r.id === order.id);
+                      if (req) setSelectedOrder(req);
+                    }}>
                       <div className="flex items-start justify-between mb-3">
                         <div>
                           <h4 className="font-bold text-gray-800 group-hover:text-brand-orange transition-colors">{order.service}</h4>
@@ -786,52 +823,182 @@ const CustomerProfilePage: React.FC = () => {
       {/* ORDER DETAIL MODAL */}
       {selectedOrder && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setSelectedOrder(null)}>
-          <div className="bg-white rounded-3xl p-6 md:p-8 max-w-2xl w-full shadow-2xl" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-3xl p-6 md:p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-start mb-6">
               <div>
-                <h3 className="text-2xl font-bold text-gray-900">{selectedOrder.service}</h3>
-                <p className="text-sm text-gray-500 mt-1">#{selectedOrder.id}</p>
+                <h3 className="text-2xl font-bold text-gray-900">
+                  {selectedOrder.serviceType === 'cekici' ? 'Çekici Hizmeti' :
+                   selectedOrder.serviceType === 'aku' ? 'Akü Takviyesi' :
+                   selectedOrder.serviceType === 'lastik' ? 'Lastik Değişimi' :
+                   selectedOrder.serviceType === 'yakit' ? 'Yakıt Desteği' :
+                   selectedOrder.serviceType === 'anahtar' ? 'Anahtar Çilingir' : 'Yol Yardım'}
+                </h3>
+                <p className="text-sm text-gray-500 mt-1">Talep #{selectedOrder.id?.slice(0, 8)}</p>
               </div>
-              <button onClick={() => setSelectedOrder(null)} className="p-2 hover:bg-gray-100 rounded-lg"><X size={24} /></button>
+              <button onClick={() => setSelectedOrder(null)} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                <X size={24} />
+              </button>
             </div>
+
+            {/* DAMAGE PHOTOS */}
+            {selectedOrder.damagePhotoUrls && selectedOrder.damagePhotoUrls.length > 0 && (
+              <div className="mb-6">
+                <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                  <Camera size={18} className="text-brand-orange" />
+                  Yüklenen Fotoğraflar ({selectedOrder.damagePhotoUrls.length})
+                </h4>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {selectedOrder.damagePhotoUrls.map((url, idx) => (
+                    <div key={idx} className="relative aspect-video rounded-xl overflow-hidden border border-gray-200 hover:border-brand-orange transition-all cursor-pointer group">
+                      <img src={url} alt={`Hasar fotoğrafı ${idx + 1}`} className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center">
+                        <Eye size={24} className="text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="space-y-4">
+              {/* Status & Timing */}
               <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 bg-gray-50 rounded-xl">
-                  <p className="text-xs text-gray-500 mb-1">Durum</p>
-                  <span className={`text-sm font-bold px-3 py-1 rounded ${selectedOrder.status === 'Tamamlandı' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>{selectedOrder.status}</span>
+                <div className="p-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl">
+                  <p className="text-xs text-gray-500 mb-2 flex items-center gap-1">
+                    <AlertCircle size={14} />
+                    Durum
+                  </p>
+                  <span className={`inline-block text-sm font-bold px-3 py-1 rounded-full ${
+                    selectedOrder.status === 'completed' ? 'bg-green-100 text-green-700' :
+                    selectedOrder.status === 'in_progress' ? 'bg-blue-100 text-blue-700' :
+                    selectedOrder.status === 'cancelled' ? 'bg-gray-100 text-gray-600' :
+                    selectedOrder.status === 'matched' ? 'bg-purple-100 text-purple-700' :
+                    'bg-orange-100 text-orange-700'
+                  }`}>
+                    {selectedOrder.status === 'open' ? 'Açık' :
+                     selectedOrder.status === 'matched' ? 'Eşleştirildi' :
+                     selectedOrder.status === 'in_progress' ? 'Devam Ediyor' :
+                     selectedOrder.status === 'completed' ? 'Tamamlandı' : 'İptal Edildi'}
+                  </span>
                 </div>
-                <div className="p-4 bg-gray-50 rounded-xl">
-                  <p className="text-xs text-gray-500 mb-1">Tutar</p>
-                  <p className="text-lg font-bold text-gray-900">{selectedOrder.amount > 0 ? `₺${selectedOrder.amount}` : '—'}</p>
+                <div className="p-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl">
+                  <p className="text-xs text-gray-500 mb-2 flex items-center gap-1">
+                    <Clock size={14} />
+                    Zamanlama
+                  </p>
+                  <p className="text-sm font-semibold text-gray-900">
+                    {selectedOrder.timing === 'now' ? '⚡ Acil' :
+                     selectedOrder.timing === 'week' ? '📅 Bu Hafta' : '⏰ Esnek'}
+                  </p>
                 </div>
               </div>
+
+              {/* Vehicle Info */}
+              {selectedOrder.vehicleInfo && (
+                <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
+                  <p className="text-xs text-blue-600 mb-2 font-semibold flex items-center gap-1">
+                    <Car size={14} />
+                    Araç Bilgisi
+                  </p>
+                  <p className="text-sm font-medium text-gray-900">{selectedOrder.vehicleInfo}</p>
+                  {selectedOrder.vehicleCondition && (
+                    <p className="text-xs text-gray-600 mt-2">
+                      Durum: <span className="font-semibold">
+                        {selectedOrder.vehicleCondition === 'running' ? '✅ Çalışıyor' : '❌ Çalışmıyor'}
+                      </span>
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Load Info */}
+              {selectedOrder.hasLoad && (
+                <div className="p-4 bg-purple-50 rounded-xl border border-purple-100">
+                  <p className="text-xs text-purple-600 mb-2 font-semibold flex items-center gap-1">
+                    <Package size={14} />
+                    Yük Bilgisi
+                  </p>
+                  <p className="text-sm text-gray-900">
+                    {selectedOrder.loadDescription || 'Araçta yük bulunmaktadır'}
+                  </p>
+                </div>
+              )}
+
+              {/* Location Info */}
               <div className="p-4 bg-gray-50 rounded-xl">
-                <p className="text-xs text-gray-500 mb-2">Hizmet Sağlayıcı</p>
-                <p className="font-bold text-gray-900">{selectedOrder.provider}</p>
-                {selectedOrder.rating && (
-                  <div className="flex items-center gap-1 text-yellow-400 mt-2">
-                    {[...Array(selectedOrder.rating)].map((_, i) => <Star key={i} size={16} fill="currentColor" />)}
+                <p className="text-xs text-gray-500 mb-3 font-semibold flex items-center gap-1">
+                  <MapPin size={14} />
+                  Konum Bilgileri
+                  </p>
+                <div className="space-y-2">
+                  <div className="flex items-start gap-2">
+                    <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <div className="w-2 h-2 rounded-full bg-green-600" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs text-gray-500">Başlangıç</p>
+                      <p className="text-sm font-medium text-gray-900">{selectedOrder.fromLocation}</p>
+                    </div>
                   </div>
-                )}
-              </div>
-              <div className="p-4 bg-gray-50 rounded-xl">
-                <p className="text-xs text-gray-500 mb-2">Konum Bilgileri</p>
-                <div className="flex items-center gap-2 text-sm text-gray-700">
-                  <MapPin size={16} className="text-brand-orange" />
-                  <span>{selectedOrder.from}</span>
+                  {selectedOrder.toLocation && (
+                    <div className="flex items-start gap-2">
+                      <div className="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <div className="w-2 h-2 rounded-full bg-red-600" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-xs text-gray-500">Varış</p>
+                        <p className="text-sm font-medium text-gray-900">{selectedOrder.toLocation}</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                {selectedOrder.to && (
-                  <div className="flex items-center gap-2 text-sm text-gray-700 mt-2">
-                    <ChevronRight size={16} className="text-gray-400" />
-                    <span>{selectedOrder.to}</span>
-                  </div>
-                )}
               </div>
+
+              {/* Provider Info (if assigned) */}
+              {selectedOrder.assignedPartnerName && (
+                <div className="p-4 bg-orange-50 rounded-xl border border-orange-100">
+                  <p className="text-xs text-orange-600 mb-2 font-semibold flex items-center gap-1">
+                    <Truck size={14} />
+                    Hizmet Sağlayıcı
+                  </p>
+                  <p className="text-sm font-bold text-gray-900">{selectedOrder.assignedPartnerName}</p>
+                </div>
+              )}
+
+              {/* Description */}
+              {selectedOrder.description && (
+                <div className="p-4 bg-gray-50 rounded-xl">
+                  <p className="text-xs text-gray-500 mb-2 font-semibold">Açıklama</p>
+                  <p className="text-sm text-gray-700">{selectedOrder.description}</p>
+                </div>
+              )}
+
+              {/* Timestamp */}
               <div className="p-4 bg-gray-50 rounded-xl">
-                <p className="text-xs text-gray-500 mb-1">Tarih & Saat</p>
-                <p className="text-sm font-medium text-gray-900">{selectedOrder.date}</p>
+                <p className="text-xs text-gray-500 mb-1 font-semibold">Oluşturulma Tarihi</p>
+                <p className="text-sm font-medium text-gray-900">
+                  {selectedOrder.createdAt ? new Date(selectedOrder.createdAt).toLocaleString('tr-TR') : '—'}
+                </p>
               </div>
             </div>
+
+            {/* Cancel Button */}
+            {selectedOrder.status !== 'cancelled' && selectedOrder.status !== 'completed' && (
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                <button
+                  onClick={() => handleCancelRequest(selectedOrder.id!)}
+                  className="w-full py-3 px-4 bg-red-50 hover:bg-red-100 text-red-600 font-semibold rounded-xl transition-all flex items-center justify-center gap-2 border border-red-200"
+                >
+                  <AlertCircle size={20} />
+                  Talebi İptal Et
+                </button>
+                {selectedOrder.assignedPartnerId && (
+                  <p className="text-xs text-gray-500 text-center mt-2">
+                    ⚠️ Bu talebe teklif verilmiştir. İptal işlemi hizmet sağlayıcı ile görüşülmeden yapılmamalıdır.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
